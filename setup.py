@@ -7,7 +7,7 @@ setup(
     long_description = """Profiling and introspection for applications using sqlalchemy""",
     author = "aes",
     author_email = "alan@you-compete.com",
-    url = "http://www.you-compete.com/sqltap",
+    url = "https://github.com/aes-/sqltap",
     packages = ["sqltap"],
     package_data = {"sqltap" : ["templates/*.mako"]},
     install_requires = [
