@@ -1,0 +1,5 @@
+include LICENSE
+include README
+include sqltap/templates/report.mako
+include doc/source/*
+include doc/Makefile
