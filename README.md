@@ -175,7 +175,7 @@ class class sqltap.QueryStats(text, stack, duration, user_context)
 sqltap.ctx
 ==========
 
-sqltap.ctx.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
+### ``sqltap.ctx.profile``(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
 
    Convenience context manager for profiling sqlalchemy queries.
 
@@ -185,7 +185,7 @@ sqltap.ctx.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
 sqltap.dec
 ==========
 
-sqltap.dec.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
+#### sqltap.dec.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
 
    Convenience decorator for profiling sqlalchemy queries.
 
