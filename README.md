@@ -1,6 +1,6 @@
 
 Overview
-********
+========
 
 **Profiling and introspection of SQLAlchemy applications.**
 
@@ -12,12 +12,10 @@ sqltap is a library that allows you to profile and introspect the
 queries that your application makes using SQLAlchemy.
 
 sqltap helps you understand:
+
    * how many times a sql query is executed
-
    * how much time your sql queries take
-
    * where your application is issuing sql queries from
-
 
 Motivation
 ==========
@@ -33,10 +31,10 @@ Simple Example
 
 This is the bare minimum you need to start profiling your application
 
-   sqltap.start()
-   session.Query(Knights).filter(who_say = 'Ni').fetchall()
-   statistics = sqltap.collect()
-   sqltap.report(statistics, "report.html")
+       sqltap.start()
+       session.Query(Knights).filter(who_say = 'Ni').fetchall()
+       statistics = sqltap.collect()
+       sqltap.report(statistics, "report.html")
 
 
 Advanced Features
@@ -48,44 +46,40 @@ sqlalchemy. For example, in a web framework, you may want to associate
 each query with the current request or page type so that you can
 easily aggregate statistics over those criteria later.
 
-   def on_application_start():
-       # Associate the current path, and request identifier with the
-       # query statistics.
-       def context_fn(*args):
-           return (framework.current_request().path,
-                   framework.current_request().id)
+       def on_application_start():
+           # Associate the current path, and request identifier with the
+           # query statistics.
+           def context_fn(*args):
+               return (framework.current_request().path,
+                       framework.current_request().id)
 
-       sqltap.start(user_context_fn = context_fn)
+           sqltap.start(user_context_fn = context_fn)
 
-   def after_request():
-       # Get all of the statistics for this request
-       def filter_fn(qstats):
-           return qstats.user_context[1] == framework.current_request()
-
-       statistics = sqltap.collect(filter_fn)
-       sqltap.report(statistics, "report.html")
-
-
-   def once_per_day():
-       # Once per day, aggregate all of the query stats
-       all_paths = ["/Books", "/Movies", "/User", "/Account"]
-
-       # Get all of the statistics for each page type
-       for path in all_paths:
+       def after_request():
+           # Get all of the statistics for this request
            def filter_fn(qstats):
-               return qstats.user_context[0].startswith(path)
-           statistics = sqltap.collect(filter_fn, and_purge = True)
-           sqltap.report(statistics, "%s-report.html" % path[1:])
+               return qstats.user_context[1] == framework.current_request()
+
+           statistics = sqltap.collect(filter_fn)
+           sqltap.report(statistics, "report.html")
 
 
-Modules
-*******
+       def once_per_day():
+           # Once per day, aggregate all of the query stats
+           all_paths = ["/Books", "/Movies", "/User", "/Account"]
+
+           # Get all of the statistics for each page type
+           for path in all_paths:
+               def filter_fn(qstats):
+                   return qstats.user_context[0].startswith(path)
+               statistics = sqltap.collect(filter_fn, and_purge = True)
+               sqltap.report(statistics, "%s-report.html" % path[1:])
 
 
 sqltap
 ======
 
-sqltap.start(engine=<class 'sqlalchemy.engine.base.Engine'>, user_context_fn=None)
+sqltap.start(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
 
    Start sqltap profiling
 
@@ -97,16 +91,16 @@ sqltap.start(engine=<class 'sqlalchemy.engine.base.Engine'>, user_context_fn=Non
    effect.
 
    Parameters:
-      * **engine** -- The sqlalchemy engine on which you want to
-        profile queries. The default is sqlalchemy.engine.Engine which
-        will profile queries across all engines.
 
-      * **user_context_fn** -- A function which returns a value to be
-        stored with the query statistics. The function takes the same
-        parameters  passed to the after_execute event in sqlalchemy:
-        (conn, clause, multiparams, params, results)
+   * **engine** -- The sqlalchemy engine on which you want to
+    profile queries. The default is sqlalchemy.engine.Engine which
+    will profile queries across all engines.
+   * **user_context_fn** -- A function which returns a value to be
+    stored with the query statistics. The function takes the same
+    parameters  passed to the after_execute event in sqlalchemy:
+    (conn, clause, multiparams, params, results)
 
-sqltap.stop(engine=<class 'sqlalchemy.engine.base.Engine'>)
+sqltap.stop(engine=sqlalchemy.engine.base.Engine)
 
    Stop sqltap profiling
 
@@ -120,13 +114,13 @@ sqltap.collect(filter_fn=None, and_purge=False)
    Collect query statstics from sqltap.
 
    Parameters:
-      * **filter_fn** -- A function which takes a ``QueryStats``
-        object  and returns *True* if the ``QueryStats`` object should
-        be  collected. If *filter_fn* is *None*, all stats are
-        collected.
 
-      * **and_purge** -- If True, purges all of the stats records that
-        are collected.
+   * **filter_fn** -- A function which takes a ``QueryStats``
+    object  and returns *True* if the ``QueryStats`` object should
+    be  collected. If *filter_fn* is *None*, all stats are
+    collected.
+   * **and_purge** -- If True, purges all of the stats records that
+    are collected.
 
    Returns:
       A list of ``QueryStats`` objects.
@@ -145,12 +139,12 @@ sqltap.report(statistics, filename=None)
    Generate an HTML report of query statistics.
 
    Parameters:
-      * **statistics** -- An iterable of ``QueryStats`` objects over
-        which to prepare a report. This is typically a list returned
-        by a call to ``collect()``.
 
-      * **filename** -- If present, additionally write the html report
-        out  to a file at the specified path.
+   * **statistics** -- An iterable of ``QueryStats`` objects over
+    which to prepare a report. This is typically a list returned
+    by a call to ``collect()``.
+   * **filename** -- If present, additionally write the html report
+    out  to a file at the specified path.
 
    Returns:
       The generated HTML report.
@@ -181,7 +175,7 @@ class class sqltap.QueryStats(text, stack, duration, user_context)
 sqltap.ctx
 ==========
 
-sqltap.ctx.profile(*args, **kwds)
+sqltap.ctx.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
 
    Convenience context manager for profiling sqlalchemy queries.
 
@@ -191,7 +185,7 @@ sqltap.ctx.profile(*args, **kwds)
 sqltap.dec
 ==========
 
-sqltap.dec.profile(engine=<class 'sqlalchemy.engine.base.Engine'>, user_context_fn=None)
+sqltap.dec.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
 
    Convenience decorator for profiling sqlalchemy queries.
 
