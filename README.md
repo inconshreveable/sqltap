@@ -79,7 +79,7 @@ easily aggregate statistics over those criteria later.
 sqltap
 ======
 
-*sqltap.start(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)*
+sqltap.**start**(*engine=sqlalchemy.engine.base.Engine, user_context_fn=None*)
 
    Start sqltap profiling
 
@@ -100,7 +100,7 @@ sqltap
     parameters  passed to the after_execute event in sqlalchemy:
     (conn, clause, multiparams, params, results)
 
-*sqltap.stop(engine=sqlalchemy.engine.base.Engine)*
+sqltap.**stop**(*engine=sqlalchemy.engine.base.Engine*)
 
    Stop sqltap profiling
 
@@ -110,7 +110,7 @@ sqltap
     profiling queries. The default is sqlalchemy.engine.Engine which
     will stop profiling queries across all engines.
 
-*sqltap.collect(filter_fn=None, and_purge=False)*
+sqltap.**collect**(*filter_fn=None, and_purge=False*)
 
    Collect query statstics from sqltap.
 
@@ -126,7 +126,7 @@ sqltap
    Returns:
       A list of ``QueryStats`` objects.
 
-*sqltap.purge(filter_fn=None)*
+sqltap.**purge**(*filter_fn=None*)
 
    Remove query statistics from sqltap.
 
@@ -136,7 +136,7 @@ sqltap
     and returns *True* if the ``QueryStats`` object should be
     purged. If *filter_fn* is *None*, all stats are purged.
 
-sqltap.report(statistics, filename=None)
+sqltap.**report**(*statistics, filename=None*)
 
    Generate an HTML report of query statistics.
 
@@ -151,7 +151,7 @@ sqltap.report(statistics, filename=None)
    Returns:
       The generated HTML report.
 
-class class sqltap.QueryStats(text, stack, duration, user_context)
+class sqltap.**QueryStats**(*text, stack, duration, user_context*)
 
    Statistics about a query
 
@@ -175,7 +175,7 @@ class class sqltap.QueryStats(text, stack, duration, user_context)
 sqltap.ctx
 ==========
 
-### ``sqltap.ctx.profile``(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
+sqltap.ctx.**profile**(*engine=sqlalchemy.engine.base.Engine, user_context_fn=None*)
 
    Convenience context manager for profiling sqlalchemy queries.
 
@@ -185,7 +185,7 @@ sqltap.ctx
 sqltap.dec
 ==========
 
-#### sqltap.dec.profile(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
+sqltap.dec.**profile**(*engine=sqlalchemy.engine.base.Engine, user_context_fn=None*)
 
    Convenience decorator for profiling sqlalchemy queries.
 
