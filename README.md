@@ -79,7 +79,7 @@ easily aggregate statistics over those criteria later.
 sqltap
 ======
 
-sqltap.start(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
+*sqltap.start(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)*
 
    Start sqltap profiling
 
@@ -100,16 +100,17 @@ sqltap.start(engine=sqlalchemy.engine.base.Engine, user_context_fn=None)
     parameters  passed to the after_execute event in sqlalchemy:
     (conn, clause, multiparams, params, results)
 
-sqltap.stop(engine=sqlalchemy.engine.base.Engine)
+*sqltap.stop(engine=sqlalchemy.engine.base.Engine)*
 
    Stop sqltap profiling
 
    Parameters:
-      **engine** -- The sqlalchemy engine on which you want to stop
-      profiling queries. The default is sqlalchemy.engine.Engine which
-      will stop profiling queries across all engines.
 
-sqltap.collect(filter_fn=None, and_purge=False)
+   * **engine** -- The sqlalchemy engine on which you want to stop
+    profiling queries. The default is sqlalchemy.engine.Engine which
+    will stop profiling queries across all engines.
+
+*sqltap.collect(filter_fn=None, and_purge=False)*
 
    Collect query statstics from sqltap.
 
@@ -125,14 +126,15 @@ sqltap.collect(filter_fn=None, and_purge=False)
    Returns:
       A list of ``QueryStats`` objects.
 
-sqltap.purge(filter_fn=None)
+*sqltap.purge(filter_fn=None)*
 
    Remove query statistics from sqltap.
 
    Parameters:
-      **filter_fn** -- A function which takes a ``QueryStats`` object
-      and returns *True* if the ``QueryStats`` object should be
-      purged. If *filter_fn* is *None*, all stats are purged.
+
+   * **filter_fn** -- A function which takes a ``QueryStats`` object
+    and returns *True* if the ``QueryStats`` object should be
+    purged. If *filter_fn* is *None*, all stats are purged.
 
 sqltap.report(statistics, filename=None)
 
@@ -157,19 +159,17 @@ class class sqltap.QueryStats(text, stack, duration, user_context)
    choose inspect them in the filter functions you pass to
    ``sqltap.collect()`` and ``sqltap.purge()``.
 
-   Attr text:
-      The text of the query
+   Attributes:
 
-   Attr stack:
-      The stack trace when this query was issued. Formatted as
-      returned by py:func:*traceback.extract_stack*
+   * **text** -- The text of the query
 
-   Attr duration:
-      Duration of the query in seconds.
+   * **stack** -- The stack trace when this query was issued. 
+    Formatted as returned by ``traceback.extract_stack``
 
-   Attr user_context:
-      The value returned by the user_context_fn set with
-      ``sqltap.start()``.
+   * **duration** -- Duration of the query in seconds.
+
+   * **user_context** -- The value returned by the 
+    user_context_fn set with ``sqltap.start()``.
 
 
 sqltap.ctx
