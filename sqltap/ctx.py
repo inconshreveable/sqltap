@@ -1,16 +1,26 @@
-import contextlib
 import sqltap
 import sqlalchemy.engine
 
-@contextlib.contextmanager
-def profile(engine = sqlalchemy.engine.Engine, user_context_fn = None):
+class profile:
     """
     Convenience context manager for profiling sqlalchemy queries.
     
-    It takes the same arguments as sqltap.start
+    See :func:`sqltap.start` for parameter information.
+
+    Example usage::
+        
+        with sqltap.ctx.profile:
+            for number in Session.query(Numbers).filter(Numbers.value <= 3):
+                print number
     """
-    sqltap.start(engine, user_context_fn)
-    yield
-    sqltap.stop(engine)
+    def __init__(self, engine = sqlalchemy.engine.Engine, user_context_fn = None):
+        self.engine = engine
+        self.user_context_fn = user_context_fn
+
+    def __enter__(self, *args, **kwargs):
+        sqltap.start(self.engine, self.user_context_fn)
+
+    def __exit__(self, *args, **kwargs):
+        sqltap.stop(self.engine)
 
 

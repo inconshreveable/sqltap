@@ -1,10 +1,8 @@
 import sqlalchemy.engine, sqlalchemy.event
-import traceback, time, threading, collections, sys, mako, os
+import traceback, time, threading, collections, sys, mako.template, os
 
-_current_query = threading.local()
-_statslock = threading.Lock()
-_queries = list()
-_user_context_fn = None
+_local = threading.local()
+_engines = {}
 
 class QueryStats:
     """ Statistics about a query
@@ -17,7 +15,8 @@ class QueryStats:
     :attr stack: The stack trace when this query was issued. Formatted as
         returned by py:func:`traceback.extract_stack`
     :attr duration: Duration of the query in seconds.
-    :attr user_context: The value returned by the user_context_fn set with :func:`sqltap.start`.
+    :attr user_context: The value returned by the user_context_fn set 
+        with :func:`sqltap.start`.
     """
     def __init__(self, text, stack, duration, user_context):
         self.text = text
@@ -46,62 +45,65 @@ def start(engine = sqlalchemy.engine.Engine, user_context_fn = None):
     """
     sqlalchemy.event.listen(engine, "before_execute", _before_exec)
     sqlalchemy.event.listen(engine, "after_execute", _after_exec)
-
-    global _user_context_fn
-    _user_context_fn = user_context_fn
+    _engines[engine] = user_context_fn
 
 def stop(engine = sqlalchemy.engine.Engine):
     """ Stop sqltap profiling
 
+    Please note that because SQLAlchemy does not yet support removing event
+    handlers, sqltap will continue to catch events from SQLAlchemy, even
+    though it will not store information on any queries related to those
+    events.
+
     :param engine: The sqlalchemy engine on which you want to
         stop profiling queries. The default is sqlalchemy.engine.Engine
         which will stop profiling queries across all engines.
+
+
+        **WARNING**: Specifying sqlalchemy.engine.Engine will only stop
+        profiling across all engines that you have not explicitly passed
+        to `sqltap.start`. For example the following will work as expected
+        ::
+            
+            sqltap.start(sqlalchemy.engine.Engine)
+            sqltap.stop(sqlalchemy.engine.Engine)
+
+        Whereas the following *will not work*
+        ::
+
+            my_engine = create_engine(...)
+            sqltap.start(my_engine)
+            sqltap.stop(sqlalchemy.engine.Engine)
+            # still recording queries from my_engine!
+
+    :exception KeyError: If the caller attempts to stop an engine that
+        has not been passed to `sqltap.start`.
+
     """
-    sqlalchemy.event.remove(engine, "before_execute", _before_exec)
-    sqlalchemy.event.remove(engine, "after_execute", _after_exec)
+    # sqlalchemy doesn't support remove yet for engines :(
+    #sqlalchemy.event.remove(engine, "before_execute", _before_exec)
+    #sqlalchemy.event.remove(engine, "after_execute", _after_exec)
+    _engines.pop(engine)
     
 
-def collect(filter_fn = None, and_purge = False):
+def collect():
     """ Collect query statstics from sqltap. 
 
-    :param filter_fn: A function which takes a :class:`.QueryStats` object 
-        and returns `True` if the :class:`.QueryStats` object should be 
-        collected. If `filter_fn` is `None`, all stats are collected.
-        
-    :param and_purge: If True, purges all of the stats records that are collected.
-    
+    Returns all query statistics collected by sqltap in the current thread.
+
+    All query statistics returned to the caller by this call are removed
+    from sqltap's internal storage.
+
     :return: A list of :class:`.QueryStats` objects.
     """
-    if filter_fn is None:
-        filter_fn = lambda q: True
 
-    with _statslock:
-        # return a copy of the list to the caller
-        stats = filter(filter_fn, _queries)
+    if not hasattr(_local, "queries"):
+        _local.queries = []
 
-        if and_purge:
-            _purge(filter_fn)
-        
-        return stats
+    qs = _local.queries
+    _local.queries = []
+    return qs
 
-def _purge(filter_fn):
-    global _queries
-    # The filter_fn returns True for items to be removed,
-    # so invert it here for items to keep
-    _queries = filter(lambda q: not filter_fn(q), _queries)
-    
-def purge(filter_fn = None):
-    """ Remove query statistics from sqltap.
-
-    :param filter_fn: A function which takes a :class:`.QueryStats` object 
-        and returns `True` if the :class:`.QueryStats` object should be 
-        purged. If `filter_fn` is `None`, all stats are purged.
-    """
-    if filter_fn is None:
-        filter_fn = lambda q: True
-
-    with _statslock:
-        _purge(filter_fn)
 
 def report(statistics, filename = None):
     """ Generate an HTML report of query statistics.
@@ -159,17 +161,29 @@ def report(statistics, filename = None):
         
     return html
 
-def _before_exec(conn, clause, mutliparams, params):
+def _before_exec(conn, clause, multiparams, params):
     """ SQLAlchemy event hook """
-
-    _current_query.start_time = time.time()
+    _local.query_start_time = time.time()
 
 def _after_exec(conn, clause, multiparams, params, results):
     """ SQLAlchemy event hook """
-    duration = time.time() - _current_query.start_time
-    context = (None if not _user_context_fn else
-                _user_context_fn(conn, clause, multiparams, params, results))
+
+    # sqlalchemy doesn't support removing engines from engines yet
+    # this is the hack which will let sqltap.stop still work
+    # check whether this query is executed on one of the registered engines
+    # or the global engine was registered
+    if not(conn.engine in _engines or sqlalchemy.engine.Engine in _engines):
+        return
+
+    context_fn = _engines.get(conn.engine, _engines.get(sqlalchemy.engine.Engine))
+
+    duration = time.time() - _local.query_start_time
+    context = (None if not context_fn else
+                context_fn(conn, clause, multiparams, params, results))
     q = QueryStats(clause, traceback.extract_stack()[:-1], duration, context)
-    with _statslock:
-        _queries.append(q)
+    
+    if not hasattr(_local, "queries"):
+        _local.queries = []
+
+    _local.queries.append(q)
 

@@ -1,4 +1,4 @@
 """
 """
 
-from sqltap import start, stop, collect, purge, report, QueryStats
+from sqltap import start, stop, collect, report, QueryStats

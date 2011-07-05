@@ -16,8 +16,8 @@ def profile(engine = sqlalchemy.engine.Engine, user_context_fn = None):
     def inner_profile(fn):
         def dec(*args, **kwargs):
             sqltap.start(engine, user_context_fn)
-            retval = fn(*args, **kwarsg)
-            sqltap.stop(engine, user_context_fn)
+            retval = fn(*args, **kwargs)
+            sqltap.stop(engine)
             return retval
         return dec
     return inner_profile

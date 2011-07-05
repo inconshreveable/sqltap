@@ -1,9 +1,14 @@
 .. sqltap documentation master file, created by
    sphinx-quickstart on Thu Jun 16 23:52:52 2011.
 
-Overview
-==================================
-**Profiling and introspection of SQLAlchemy applications.**
+SQLTap - profiling and introspection for SQLAlchemy applications
+================================================================
+
+
+.. image:: images/sqltap-report-example.jpg
+    :align: center
+    :height: 500px
+
 
 Introduction
 ------------
@@ -24,7 +29,7 @@ visibility into how your application is using SQLAlchemy so you can
 find and fix these problems with minimal effort.
 
 Simple Example
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 This is the bare minimum you need to start profiling your application
 
 ::
@@ -36,7 +41,7 @@ This is the bare minimum you need to start profiling your application
 
 
 Advanced Features
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 sqltap provides the notion of a context function which lets you associate
 arbitrary data with each query as it is issued by sqlalchemy. For example,
 in a web framework, you may want to associate each query with the current
@@ -45,8 +50,10 @@ those criteria later.
 
 ::
 
+    all_statistics = []
+
     def on_application_start():
-        # Associate the current path, and request identifier with the
+        # Associate the request path, and request identifier with the
         # query statistics.
         def context_fn(*args):
             return (framework.current_request().path,
@@ -54,34 +61,43 @@ those criteria later.
 
         sqltap.start(user_context_fn = context_fn)
         
+
     def after_request():
-        # Get all of the statistics for this request
-        def filter_fn(qstats):
-            return qstats.user_context[1] == framework.current_request()
-        
-        statistics = sqltap.collect(filter_fn)
-        sqltap.report(statistics, "report.html")
+        # Generate pre-request reports
+        statistics = sqltap.collect()
+        all_statistics.append(statistics)
+
+        def filter_request(qstats):
+            request_id = qstats.user_context[1]
+            return request_id = framework.current_request().id
+
+        request_stats = filter(filter_request, statistics)
+        sqltap.report(request_stats, "report.html")
 
 
     def once_per_day():
-        # Once per day, aggregate all of the query stats
+        # Once per day, generate reports for each of the major
+        # areas of the website
         all_paths = ["/Books", "/Movies", "/User", "/Account"]
 
         # Get all of the statistics for each page type
         for path in all_paths:
-            def filter_fn(qstats):
-                return qstats.user_context[0].startswith(path)
-            statistics = sqltap.collect(filter_fn, and_purge = True)
-            sqltap.report(statistics, "%s-report.html" % path[1:])
+
+            def filter_path(qstats):
+                request_path = qstats.user_context[0]
+                return request_path.startswith(path)
+
+            path_stats = filter(filter_path, all_statistics)
+            sqltap.report(path_stats, "%s-report.html" % path[1:])
 
 
 Modules
-==============
+=======
 
 sqltap
 ----------------------------------
 .. automodule:: sqltap
-   :members: start, stop, collect, purge, report, QueryStats
+   :members: start, stop, collect, report, QueryStats
 
 sqltap.ctx
 ----------------------------------
