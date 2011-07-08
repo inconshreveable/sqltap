@@ -30,7 +30,7 @@ find and fix these problems with minimal effort.
 
 Simple Example
 ^^^^^^^^^^^^^^
-This is the bare minimum you need to start profiling your application
+This is the bare minimum you need to start profiling your application:
 
 ::
 
