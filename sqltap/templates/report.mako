@@ -44,37 +44,37 @@
             <ul>
                 % for text, group in sorted(query_groups.items(),\
                         key = lambda pair: pair[1].sum, reverse = True):
-                <li class="query">
-                    <h4 class="toggle">
-                        Query count: ${len(group.queries)},
-                        durations:
-                        Avg: ${'%.2f' % group.mean}
-                        Total: ${'%.2f' % group.sum}
-                        Max: ${'%.2f' % group.max}
-                    </h4>
-                    <div class="details">
-                        <pre class="text">${text}</pre>
-
-                        <% stack_count = len(group.stacks) %>
+                    <li class="query">
                         <h4 class="toggle">
-                            ${stack_count} unique
-                            % if stack_count == 1:
-                                stack issues
-                            % else:
-                                stacks issue
-                            % endif
-                            this query
+                            Query count: ${len(group.queries)},
+                            durations:
+                            Avg: ${'%.2f' % group.mean}s
+                            Total: ${'%.2f' % group.sum}s
+                            Max: ${'%.2f' % group.max}s
                         </h4>
-                        <ul class="details">
-                            % for trace, count in group.stacks.items():
-                            <li class="stacktrace">
-                                <p>${count} stacks traces</p>
-                                <pre class="text">${trace}</pre>
-                            </li>
-                            % endfor
-                        </ul>
-                    </div>
-                </li>
+                        <div class="details">
+                            <pre class="text">${text}</pre>
+    
+                            <% stack_count = len(group.stacks) %>
+                            <h4 class="toggle">
+                                ${stack_count} unique
+                                % if stack_count == 1:
+                                    stack issues
+                                % else:
+                                    stacks issue
+                                % endif
+                                this query
+                            </h4>
+                            <ul class="details">
+                                % for trace, count in group.stacks.items():
+                                    <li class="stacktrace">
+                                        <p>${count} stack traces</p>
+                                        <pre class="text">${trace}</pre>
+                                    </li>
+                                % endfor
+                            </ul>
+                        </div>
+                    </li>
                 % endfor
             </ul>
         </div>
