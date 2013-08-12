@@ -1,7 +1,11 @@
 import sqlalchemy.engine, sqlalchemy.event
 import traceback, time, threading, collections, sys, mako.template, os
+from Queue import Queue, Empty, Full
 
 _local = threading.local()
+_queue = Queue(maxsize=500)
+
+# _local = threading.local()
 _engines = {}
 
 class QueryStats:
@@ -97,12 +101,10 @@ def collect():
     :return: A list of :class:`.QueryStats` objects.
     """
 
-    if not hasattr(_local, "queries"):
-        _local.queries = []
-
-    qs = _local.queries
-    _local.queries = []
-    return qs
+    qs = []
+    while True:
+        try: qs.append(_queue.get(False))
+        except Empty: return qs
 
 
 def report(statistics, filename = None):
@@ -180,10 +182,13 @@ def _after_exec(conn, clause, multiparams, params, results):
     duration = time.time() - _local.query_start_time
     context = (None if not context_fn else
                 context_fn(conn, clause, multiparams, params, results))
-    q = QueryStats(clause, traceback.extract_stack()[:-1], duration, context)
-    
-    if not hasattr(_local, "queries"):
-        _local.queries = []
-
-    _local.queries.append(q)
+    stat = QueryStats(clause, traceback.extract_stack()[:-1], duration, context)
+    while True:
+        try: 
+            _queue.put(stat)
+            return
+        except Full: 
+            # Queue is full, drain away older queries to make room and try again
+            try: _queue.get(False)
+            except Empty: pass # Oops, someone beat us to it?
 
