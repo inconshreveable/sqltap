@@ -5,7 +5,6 @@ from Queue import Queue, Empty, Full
 _local = threading.local()
 _queue = Queue(maxsize=500)
 
-# _local = threading.local()
 _engines = {}
 
 class QueryStats:
