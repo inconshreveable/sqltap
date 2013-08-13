@@ -1,7 +1,7 @@
 .. sqltap documentation master file, created by
    sphinx-quickstart on Thu Jun 16 23:52:52 2011.
 
-SQLTap - profiling and introspection for SQLAlchemy applications
+Sqltap - profiling and introspection for SQLAlchemy applications
 ================================================================
 
 
@@ -23,19 +23,19 @@ sqltap helps you understand:
 
 Motivation
 ----------
-ORM's are notorious for issuing queries that are not performant
+ORMs are notorious for issuing queries that are not performant
 or issuing far more queries than necessary. sqltap gives you flexible
 visibility into how your application is using SQLAlchemy so you can
 find and fix these problems with minimal effort.
 
 Simple Example
 ^^^^^^^^^^^^^^
-This is the bare minimum you need to start profiling your application
+This is the bare minimum you need to start profiling your application:
 
 ::
 
     sqltap.start()
-    session.Query(Knights).filter(who_say = 'Ni').fetchall()
+    session.Query(Knights).filter(who_say == 'Ni').all()
     statistics = sqltap.collect()
     sqltap.report(statistics, "report.html")
 
@@ -43,10 +43,10 @@ This is the bare minimum you need to start profiling your application
 Advanced Features
 ^^^^^^^^^^^^^^^^^
 sqltap provides the notion of a context function which lets you associate
-arbitrary data with each query as it is issued by sqlalchemy. For example,
+arbitrary data with each query as it is issued by SQLAlchemy. For example,
 in a web framework, you may want to associate each query with the current
 request or page type so that you can easily aggregate statistics over
-those criteria later.
+these criteria later.
 
 ::
 

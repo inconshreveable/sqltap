@@ -9,7 +9,7 @@ def _startswith(qs, text):
 class SqlTapTests(unittest.TestCase):
 
     def setUp(self):
-        self.engine = create_engine('sqlite:///:memory:', echo=True)
+        self.engine = create_engine('sqlite:///:memory:', echo = True)
 
         Base = declarative_base(bind = self.engine)
 
@@ -20,7 +20,7 @@ class SqlTapTests(unittest.TestCase):
 
         Base.metadata.create_all(self.engine)
 
-        self.Session = sessionmaker(bind=self.engine)
+        self.Session = sessionmaker(bind = self.engine)
 
     def test_insert(self):
         """ Simple test that sqltap collects an insert query. """
@@ -48,7 +48,7 @@ class SqlTapTests(unittest.TestCase):
         another thread.
         """
         def f():
-            engine2 = create_engine('sqlite:///:memory:', echo=True)
+            engine2 = create_engine('sqlite:///:memory:', echo = True)
 
             Base = declarative_base(bind = engine2)
 
@@ -57,7 +57,7 @@ class SqlTapTests(unittest.TestCase):
                 id = Column("id", Integer, primary_key = True)
 
             Base.metadata.create_all(engine2)
-            Session = sessionmaker(bind=engine2)
+            Session = sessionmaker(bind = engine2)
             sqltap.start(engine2)
 
             sqltap.start(self.engine)
@@ -71,11 +71,10 @@ class SqlTapTests(unittest.TestCase):
         assert len(_startswith(stats, 'SELECT')) == 0
 
     def test_engine_scoped(self):
-        """
-        Test that calling sqltap.start with a particular engine instance
+        """ Test that calling sqltap.start with a particular engine instance
         properly captures queries only to that engine.
         """
-        engine2 = create_engine('sqlite:///:memory:', echo=True)
+        engine2 = create_engine('sqlite:///:memory:', echo = True)
 
         Base = declarative_base(bind = engine2)
 
@@ -84,7 +83,7 @@ class SqlTapTests(unittest.TestCase):
             id = Column("id", Integer, primary_key = True)
 
         Base.metadata.create_all(engine2)
-        Session = sessionmaker(bind=engine2)
+        Session = sessionmaker(bind = engine2)
         sqltap.start(engine2)
 
         sess = self.Session()
@@ -96,17 +95,17 @@ class SqlTapTests(unittest.TestCase):
         stats = _startswith(sqltap.collect(), 'SELECT')
         assert len(stats) == 1
 
-
     def test_engine_global(self):
         """ Test that registering globally for all queries correctly pulls queries
-            from multiple engines.
-        
-            This test passes, but because SQLAlchemy won't ever let us unregister
-            our event handlers, this causes side-effects in other tests that will
-            break them.
+        from multiple engines.
+    
+        This test passes, but because SQLAlchemy won't ever let us unregister
+        our event handlers, this causes side-effects in other tests that will
+        break them.
         """
         return
-        engine2 = create_engine('sqlite:///:memory:', echo=True)
+    
+        engine2 = create_engine('sqlite:///:memory:', echo = True)
 
         Base = declarative_base(bind = engine2)
 
@@ -129,7 +128,7 @@ class SqlTapTests(unittest.TestCase):
         
     def test_start_twice(self):
         """ Ensure that if multiple calls to sqltap.start on the same
-            engine do not cause us to record more than one event per query.
+        engine do not cause us to record more than one event per query.
         """
         sqltap.start(self.engine)
         sqltap.start(self.engine)
@@ -143,25 +142,32 @@ class SqlTapTests(unittest.TestCase):
     def test_stop(self):
         """ Ensure queries after you call sqltap.stop() are not recorded. """
         sqltap.start(self.engine)
+        
         sess = self.Session()
         sess.query(self.A).all()
+        
         sqltap.stop(self.engine)
+        
         sess.query(self.A).all()
 
         assert len(sqltap.collect()) == 1
 
     def test_stop_global(self):
         """ Ensure queries after you call sqltap.stop() are not recorded when passing
-            in the 'global' Engine object to record queries across all engines.
-        
-            This test passes, but because SQLAlchemy won't ever let us unregister
-            our event handlers, this causes side-effects in other tests and will.
+        in the 'global' Engine object to record queries across all engines.
+    
+        This test passes, but because SQLAlchemy won't ever let us unregister
+        our event handlers, this causes side-effects in other tests and will.
         """
         return
+        
         sqltap.start()
+        
         sess = self.Session()
         sess.query(self.A).all()
+        
         sqltap.stop()
+        
         sess.query(self.A).all()
 
         assert len(sqltap.collect()) == 1
@@ -174,15 +180,12 @@ class SqlTapTests(unittest.TestCase):
         qtext = str(q)
         q.all()
 
-
         report = sqltap.report(sqltap.collect())
         assert 'SQLTap Report' in report
         assert qtext in report
-        
 
     def test_report_aggregation(self):
-        """
-        Test that we aggregate stats for the same query called from
+        """ Test that we aggregate stats for the same query called from
         different locations as well as aggregating queries called
         from the same stack trace.
         """
@@ -193,7 +196,7 @@ class SqlTapTests(unittest.TestCase):
 
         q.all()
         q.all()
-            
+
         q2 = sess.query(self.A).filter(self.A.id == 10)
         for i in xrange(10):
             q2.all()
@@ -201,7 +204,6 @@ class SqlTapTests(unittest.TestCase):
         report = sqltap.report(sqltap.collect())
         assert '2 unique' in report
         assert 'Query count: 10' in report
-
 
     def test_decorator(self):
         sess = self.Session()
@@ -235,7 +237,6 @@ class SqlTapTests(unittest.TestCase):
         stats = sqltap.collect()
         assert len(_startswith(stats, 'SELECT')) == 1
 
-
     def test_context_fn(self):
         sqltap.start(self.engine, lambda *args: 1)
 
@@ -248,7 +249,7 @@ class SqlTapTests(unittest.TestCase):
         assert ctxs[0] == 1
 
     def test_context_fn_isolation(self):
-        engine2 = create_engine('sqlite:///:memory:', echo=True)
+        engine2 = create_engine('sqlite:///:memory:', echo = True)
 
         Base = declarative_base(bind = engine2)
 
@@ -257,7 +258,7 @@ class SqlTapTests(unittest.TestCase):
             id = Column("id", Integer, primary_key = True)
 
         Base.metadata.create_all(engine2)
-        Session = sessionmaker(bind=engine2)
+        Session = sessionmaker(bind = engine2)
 
         sqltap.start(self.engine, lambda *args: 1)
         sqltap.start(engine2, lambda *args: 2)

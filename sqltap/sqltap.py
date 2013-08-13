@@ -7,13 +7,13 @@ _engines = {}
 class QueryStats:
     """ Statistics about a query
 
-    You should not create these objects, but your application may choose
+    You should not create these objects, but your application may choose to
     inspect them in the filter functions you pass to :func:`sqltap.collect`
     and :func:`sqltap.purge`.
     
-    :attr text: The text of the query
+    :attr text: The text of the query.
     :attr stack: The stack trace when this query was issued. Formatted as
-        returned by py:func:`traceback.extract_stack`
+        returned by py:func:`traceback.extract_stack`.
     :attr duration: Duration of the query in seconds.
     :attr user_context: The value returned by the user_context_fn set 
         with :func:`sqltap.start`.
@@ -59,7 +59,6 @@ def stop(engine = sqlalchemy.engine.Engine):
         stop profiling queries. The default is sqlalchemy.engine.Engine
         which will stop profiling queries across all engines.
 
-
         **WARNING**: Specifying sqlalchemy.engine.Engine will only stop
         profiling across all engines that you have not explicitly passed
         to `sqltap.start`. For example the following will work as expected
@@ -85,7 +84,6 @@ def stop(engine = sqlalchemy.engine.Engine):
     #sqlalchemy.event.remove(engine, "after_execute", _after_exec)
     _engines.pop(engine)
     
-
 def collect():
     """ Collect query statstics from sqltap. 
 
@@ -103,7 +101,6 @@ def collect():
     qs = _local.queries
     _local.queries = []
     return qs
-
 
 def report(statistics, filename = None):
     """ Generate an HTML report of query statistics.
@@ -186,4 +183,3 @@ def _after_exec(conn, clause, multiparams, params, results):
         _local.queries = []
 
     _local.queries.append(q)
-
