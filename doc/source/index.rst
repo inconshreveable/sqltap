@@ -108,3 +108,9 @@ sqltap.dec
 ----------------------------------
 .. automodule:: sqltap.dec
    :members:
+
+sqltap.wsgi
+----------------------------------
+.. automodule:: sqltap.wsgi
+   :members:
+
