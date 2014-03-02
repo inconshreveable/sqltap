@@ -1,12 +1,13 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
-import sqltap, unittest, threading, sqltap.dec, sqltap.ctx
+import sqltap, unittest
+import nose.tools
 
 def _startswith(qs, text):
     return filter(lambda q: str(q.text).startswith(text), qs)
 
-class SqlTapTests(unittest.TestCase):
+class TestSQLTap(object):
 
     def setUp(self):
         self.engine = create_engine('sqlite:///:memory:', echo=True)
@@ -24,51 +25,24 @@ class SqlTapTests(unittest.TestCase):
 
     def test_insert(self):
         """ Simple test that sqltap collects an insert query. """
-        sqltap.start(self.engine)
+        profiler = sqltap.start(self.engine)
 
         sess = self.Session()
         sess.add(self.A())
         sess.flush()
 
-        stats = sqltap.collect()
+        stats = profiler.collect()
         assert len(_startswith(stats, 'INSERT')) == 1
 
     def test_select(self):
         """ Simple test that sqltap collects a select query. """
-        sqltap.start(self.engine)
+        profiler = sqltap.start(self.engine)
 
         sess = self.Session()
         sess.query(self.A).all()
 
-        stats = sqltap.collect()
+        stats = profiler.collect()
         assert len(_startswith(stats, 'SELECT')) == 1
-
-    def test_thread(self):
-        """ Test that queries in a separate thread can not be collected from
-        another thread.
-        """
-        def f():
-            engine2 = create_engine('sqlite:///:memory:', echo=True)
-
-            Base = declarative_base(bind = engine2)
-
-            class B(Base):
-                __tablename__ = "b"
-                id = Column("id", Integer, primary_key = True)
-
-            Base.metadata.create_all(engine2)
-            Session = sessionmaker(bind=engine2)
-            sqltap.start(engine2)
-
-            sqltap.start(self.engine)
-            sess2 = Session()
-            sess2.query(B).all()
-        
-        thread = threading.Thread(target = f)
-        thread.start()
-        thread.join()
-        stats = sqltap.collect()
-        assert len(_startswith(stats, 'SELECT')) == 0
 
     def test_engine_scoped(self):
         """
@@ -85,7 +59,7 @@ class SqlTapTests(unittest.TestCase):
 
         Base.metadata.create_all(engine2)
         Session = sessionmaker(bind=engine2)
-        sqltap.start(engine2)
+        profiler = sqltap.start(engine2)
 
         sess = self.Session()
         sess.query(self.A).all()
@@ -93,19 +67,14 @@ class SqlTapTests(unittest.TestCase):
         sess2 = Session()
         sess2.query(B).all()
 
-        stats = _startswith(sqltap.collect(), 'SELECT')
+        stats = _startswith(profiler.collect(), 'SELECT')
         assert len(stats) == 1
 
 
     def test_engine_global(self):
         """ Test that registering globally for all queries correctly pulls queries
             from multiple engines.
-        
-            This test passes, but because SQLAlchemy won't ever let us unregister
-            our event handlers, this causes side-effects in other tests that will
-            break them.
         """
-        return
         engine2 = create_engine('sqlite:///:memory:', echo=True)
 
         Base = declarative_base(bind = engine2)
@@ -116,7 +85,7 @@ class SqlTapTests(unittest.TestCase):
 
         Base.metadata.create_all(engine2)
         Session = sessionmaker(bind=engine2)
-        sqltap.start()
+        profiler = sqltap.start()
 
         sess = self.Session()
         sess.query(self.A).all()
@@ -124,58 +93,49 @@ class SqlTapTests(unittest.TestCase):
         sess2 = Session()
         sess2.query(B).all()
 
-        stats = _startswith(sqltap.collect(), 'SELECT')
+        stats = _startswith(profiler.collect(), 'SELECT')
         assert len(stats) == 2
         
+    @nose.tools.raises(AssertionError)
     def test_start_twice(self):
-        """ Ensure that if multiple calls to sqltap.start on the same
-            engine do not cause us to record more than one event per query.
+        """ Ensure that multiple calls to ProfilingSession.start() raises assertion
+        error.
         """
-        sqltap.start(self.engine)
-        sqltap.start(self.engine)
-
-        sess = self.Session()
-        sess.query(self.A).all()
-
-        stats = _startswith(sqltap.collect(), 'SELECT')
-        assert len(stats) == 1
+        profiler = sqltap.ProfilingSession(self.engine)
+        profiler.start()
+        profiler.start()
 
     def test_stop(self):
-        """ Ensure queries after you call sqltap.stop() are not recorded. """
-        sqltap.start(self.engine)
+        """ Ensure queries after you call ProfilingSession.stop() are not recorded. """
+        profiler = sqltap.start(self.engine)
         sess = self.Session()
         sess.query(self.A).all()
-        sqltap.stop(self.engine)
+        profiler.stop()
         sess.query(self.A).all()
 
-        assert len(sqltap.collect()) == 1
+        assert len(profiler.collect()) == 1
 
     def test_stop_global(self):
-        """ Ensure queries after you call sqltap.stop() are not recorded when passing
-            in the 'global' Engine object to record queries across all engines.
-        
-            This test passes, but because SQLAlchemy won't ever let us unregister
-            our event handlers, this causes side-effects in other tests and will.
+        """ Ensure queries after you call ProfilingSession.stop() are not recorded
+            when passing in the 'global' Engine object to record queries across all engines.
         """
-        return
-        sqltap.start()
+        profiler = sqltap.start()
         sess = self.Session()
         sess.query(self.A).all()
-        sqltap.stop()
+        profiler.stop()
         sess.query(self.A).all()
 
-        assert len(sqltap.collect()) == 1
+        assert len(profiler.collect()) == 1
 
     def test_report(self):
-        sqltap.start(self.engine)
+        profiler = sqltap.start(self.engine)
 
         sess = self.Session()
         q = sess.query(self.A)
         qtext = str(q)
         q.all()
 
-
-        report = sqltap.report(sqltap.collect())
+        report = sqltap.report(profiler.collect())
         assert 'SQLTap Report' in report
         assert qtext in report
         
@@ -186,7 +146,7 @@ class SqlTapTests(unittest.TestCase):
         different locations as well as aggregating queries called
         from the same stack trace.
         """
-        sqltap.start(self.engine)
+        profiler = sqltap.start(self.engine)
 
         sess = self.Session()
         q = sess.query(self.A)
@@ -198,82 +158,117 @@ class SqlTapTests(unittest.TestCase):
         for i in xrange(10):
             q2.all()
 
-        report = sqltap.report(sqltap.collect())
+        report = sqltap.report(profiler.collect())
         assert '2 unique' in report
         assert 'Query count: 10' in report
 
-
-    def test_decorator(self):
+    def test_start_stop(self):
         sess = self.Session()
         q = sess.query(self.A)
+        profiled = sqltap.ProfilingSession(self.engine)
 
-        @sqltap.dec.profile(self.engine)
+        q.all()
+
+        stats = profiled.collect()
+        assert len(_startswith(stats, 'SELECT')) == 0
+
+        profiled.start()
+        q.all()
+        q.all()
+        profiled.stop()
+        q.all()
+
+        stats2 = profiled.collect()
+        assert len(_startswith(stats2, 'SELECT')) == 2
+
+    def test_decorator(self):
+        """ Test that queries issued in a decorated function are profiled """
+        sess = self.Session()
+        q = sess.query(self.A)
+        profiled = sqltap.ProfilingSession(self.engine)
+
+        @profiled
         def test_function():
-            q.all()
+            self.Session().query(self.A).all()
             
         q.all()
         
-        stats = sqltap.collect()
+        stats = profiled.collect()
         assert len(_startswith(stats, 'SELECT')) == 0
 
         test_function()
         test_function()
         q.all()
 
-        stats = sqltap.collect()
-        assert len(_startswith(stats, 'SELECT')) == 0
+        stats = profiled.collect()
+        assert len(_startswith(stats, 'SELECT')) == 2
 
     def test_context_manager(self):
         sess = self.Session()
         q = sess.query(self.A)
+        profiled = sqltap.ProfilingSession(self.engine)
 
-        with sqltap.ctx.profile(self.engine):
+        with profiled:
             q.all()
                 
         q.all()
         
-        stats = sqltap.collect()
+        stats = profiled.collect()
         assert len(_startswith(stats, 'SELECT')) == 1
 
 
     def test_context_fn(self):
-        sqltap.start(self.engine, lambda *args: 1)
+        profiler = sqltap.start(self.engine, lambda *args: 1)
 
         sess = self.Session()
         q = sess.query(self.A)
         q.all()
-        stats = sqltap.collect()
+        stats = profiler.collect()
 
         ctxs = [qstats.user_context for qstats in _startswith(stats, 'SELECT')]
         assert ctxs[0] == 1
 
     def test_context_fn_isolation(self):
-        engine2 = create_engine('sqlite:///:memory:', echo=True)
+        x = { "i": 0 }
+        def context_fn(*args):
+            x['i'] += 1
+            return x['i']
 
-        Base = declarative_base(bind = engine2)
-
-        class B(Base):
-            __tablename__ = "b"
-            id = Column("id", Integer, primary_key = True)
-
-        Base.metadata.create_all(engine2)
-        Session = sessionmaker(bind=engine2)
-
-        sqltap.start(self.engine, lambda *args: 1)
-        sqltap.start(engine2, lambda *args: 2)
+        profiler = sqltap.start(self.engine, context_fn)
 
         sess = self.Session()
         sess.query(self.A).all()
 
         sess2 = Session()
-        sess2.query(B).all()
+        sess2.query(self.A).all()
 
-        stats = sqltap.collect()
+        stats = profiler.collect()
 
         ctxs = [qstats.user_context for qstats in _startswith(stats, 'SELECT')]
         assert ctxs.count(1) == 1
         assert ctxs.count(2) == 1
 
     def test_collect_empty(self):
-        sqltap.start(self.engine)
-        assert len(sqltap.collect()) == 0
+        profiler = sqltap.start(self.engine)
+        assert len(profiler.collect()) == 0
+
+    def test_collect_fn(self):
+        collection = []
+        def my_collector(q):
+            collection.append(q)
+
+        sess = self.Session()
+        profiler = sqltap.start(self.engine, collect_fn=my_collector)
+        sess.query(self.A).all()
+
+        assert len(collection) == 1
+
+        sess.query(self.A).all()
+
+        assert len(collection) == 2
+
+    @nose.tools.raises(AssertionError)
+    def test_collect_fn_execption_on_collect(self):
+        def noop(): pass
+        profiler = sqltap.start(self.engine, collect_fn=noop)
+        profiler.collect()

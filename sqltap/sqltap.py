@@ -1,10 +1,7 @@
 import sqlalchemy.engine, sqlalchemy.event
-import traceback, time, threading, collections, sys, mako.template, os
+import traceback, time, collections, sys, mako.template, os, Queue
 
-_local = threading.local()
-_engines = {}
-
-class QueryStats:
+class QueryStats(object):
     """ Statistics about a query
 
     You should not create these objects, but your application may choose
@@ -24,88 +21,174 @@ class QueryStats:
         self.duration = duration
         self.user_context = user_context
 
-def start(engine = sqlalchemy.engine.Engine, user_context_fn = None):
-    """ Start sqltap profiling
+class ProfilingSession(object):
+    """ A ProfilingSession captures queries run on an Engine and metadata about them.
 
-    You may call this function when sqltap is already profiling to
-    add another engine to be profiled or to replace the user_context_fn
-    function. 
+    The profiling session hooks into SQLAlchmey and captures query text,
+    timing information, and backtraces of where those queries came from.
 
-    Calling start on an engine that is already being profiled
-    has no effect.
+    You may have multiple profiling sessions active at the same time on
+    the same or different Engines. If multiple profiling sessions are
+    active on the same engine, queries on that engine will be collected
+    by both sessions.
 
-    :param engine: The sqlalchemy engine on which you want to
-        profile queries. The default is sqlalchemy.engine.Engine
-        which will profile queries across all engines.
+    You may pass a context function to the session's constructor which
+    will be executed at each query invocation and its result stored with
+    that query. This is useful for associating queries with specific
+    requests in a web framework, or specific threads in a process.
 
-    :param user_context_fn: A function which returns a value to be stored
-        with the query statistics. The function takes the same parameters 
-        passed to the after_execute event in sqlalchemy: 
-        (conn, clause, multiparams, params, results)
-    """
-    sqlalchemy.event.listen(engine, "before_execute", _before_exec)
-    sqlalchemy.event.listen(engine, "after_execute", _after_exec)
-    _engines[engine] = user_context_fn
+    By default, a session collects all of :class:`QueryStats` objects in
+    an internal queue whose contents you can retrieve by calling
+    :func:`ProfilingSession.collect`. If you want to collect the query
+    results continually, you may do so by passing your own collection
+    function to the session's constructor.
 
-def stop(engine = sqlalchemy.engine.Engine):
-    """ Stop sqltap profiling
+    You may start, stop, and restart a profiling session as much as you
+    like. Calling start on an already started session or stop on an
+    already stopped session will raise an AssertionError.
 
-    Please note that because SQLAlchemy does not yet support removing event
-    handlers, sqltap will continue to catch events from SQLAlchemy, even
-    though it will not store information on any queries related to those
-    events.
+    You may use a profiling session object like a context manager. This
+    has the effect of only profiling queries issued while executing
+    within the context.
 
-    :param engine: The sqlalchemy engine on which you want to
-        stop profiling queries. The default is sqlalchemy.engine.Engine
-        which will stop profiling queries across all engines.
+    Example usage::
+        
+        profiler = ProfilingSession()
+        with profiler:
+            for number in Session.query(Numbers).filter(Numbers.value <= 3):
+                print number
 
+    You may also use a profiling session object like a decorator. This
+    has the effect of only profiling queries issued within the decorated
+    function.
 
-        **WARNING**: Specifying sqlalchemy.engine.Engine will only stop
-        profiling across all engines that you have not explicitly passed
-        to `sqltap.start`. For example the following will work as expected
-        ::
-            
-            sqltap.start(sqlalchemy.engine.Engine)
-            sqltap.stop(sqlalchemy.engine.Engine)
+    Example usage::
+        
+        profiler = ProfilingSession()
 
-        Whereas the following *will not work*
-        ::
-
-            my_engine = create_engine(...)
-            sqltap.start(my_engine)
-            sqltap.stop(sqlalchemy.engine.Engine)
-            # still recording queries from my_engine!
-
-    :exception KeyError: If the caller attempts to stop an engine that
-        has not been passed to `sqltap.start`.
-
-    """
-    # sqlalchemy doesn't support remove yet for engines :(
-    #sqlalchemy.event.remove(engine, "before_execute", _before_exec)
-    #sqlalchemy.event.remove(engine, "after_execute", _after_exec)
-    _engines.pop(engine)
-    
-
-def collect():
-    """ Collect query statstics from sqltap. 
-
-    Returns all query statistics collected by sqltap in the current thread.
-
-    All query statistics returned to the caller by this call are removed
-    from sqltap's internal storage.
-
-    :return: A list of :class:`.QueryStats` objects.
+        @profiler
+        def holy_hand_grenade():
+            for number in Session.query(Numbers).filter(Numbers.value <= 3):
+                print number
     """
 
-    if not hasattr(_local, "queries"):
-        _local.queries = []
+    def __init__(self, engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None):
+        """ Create a new :class:`ProfilingSession` object
 
-    qs = _local.queries
-    _local.queries = []
-    return qs
+        :param engine: The sqlalchemy engine on which you want to
+            profile queries. The default is sqlalchemy.engine.Engine
+            which will profile queries across all engines.
 
+        :param user_context_fn: A function which returns a value to be stored
+            with the query statistics. The function takes the same parameters 
+            passed to the after_execute event in sqlalchemy: 
+            (conn, clause, multiparams, params, results)
 
-def report(statistics, filename = None):
+        :param collect_fn: A function which accepts a :class:`QueryStats`
+            argument. If specified, the :class:`ProfilingSession` will not
+            save queries in an internal queue and will instead pass them
+            to this function immediately.
+        """
+        self.started = False
+        self.engine = engine
+        self.user_context_fn = user_context_fn
+
+        if collect_fn:
+            # the user said they want to do their own collecting
+            self.collector = None
+            self.collect_fn = collect_fn
+        else:
+            # we're doing the collecting, make an unbounded thread-safe queue
+            self.collector = Queue.Queue(0)
+            self.collect_fn = self.collector.put
+
+    def _before_exec(self, conn, clause, multiparams, params):
+        """ SQLAlchemy event hook """
+        conn._sqltap_query_start_time = time.time()
+
+    def _after_exec(self, conn, clause, multiparams, params, results):
+        """ SQLAlchemy event hook """
+        # calculate the query time
+        duration = time.time() - conn._sqltap_query_start_time
+
+        # get the user's context
+        context = (None if not self.user_context_fn else
+                   self.user_context_fn(conn, clause, multiparams, params, results))
+
+        # add the querystats to the collector
+        self.collect_fn(QueryStats(clause, traceback.extract_stack()[:-1], duration, context))
+
+    def collect(self):
+        """ Return all queries collected by this profiling session so far.
+        Throws an exception if you passed a `collect_fn` argument to the
+        session's constructor.
+        """
+        if not self.collector:
+            raise AssertionError("Can't call collect when you've registered your own collect_fn!")
+
+        queries = []
+        try:
+            while True:
+                queries.append(self.collector.get(block=False))
+        except Queue.Empty:
+            pass
+
+        return queries
+
+    def start(self):
+        """ Start profiling
+
+        :raises AssertionError: If calling this function when the session 
+            is already started.
+        """
+        if self.started == True:
+            raise AssertionError("Profiling session is already started!")
+
+        self.started = True
+        sqlalchemy.event.listen(self.engine, "before_execute", self._before_exec)
+        sqlalchemy.event.listen(self.engine, "after_execute", self._after_exec)
+
+    def stop(self):
+        """ Stop profiling
+
+        :raises AssertionError: If calling this function when the session 
+            is already stopped.
+        """
+        if self.started == False:
+            raise AssertionError("Profiling session is already stopped")
+
+        self.started = False
+        sqlalchemy.event.remove(self.engine, "before_execute", self._before_exec)
+        sqlalchemy.event.remove(self.engine, "after_execute", self._after_exec)
+
+    def __enter__(self, *args, **kwargs):
+        """ context manager """
+        self.start()
+
+    def __exit__(self, *args, **kwargs):
+        """ context manager """
+        self.stop()
+
+    def __call__(self, fn):
+        """ decorator """
+        def decorated(*args, **kwargs):
+            with self:
+                return fn(*args, **kwargs)
+        return decorated
+
+def start(engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None):
+    """ Create a new :class:`ProfilingSession` and call start on it.
+
+    This is a convenience method. See :class:`ProfilingSession`'s
+    constructor for documentation on the arguments.
+
+    :return: A new :class:`ProfilingSession`
+    """
+    session = ProfilingSession(engine, user_context_fn, collect_fn)
+    session.start()
+    return session
+
+def report(statistics, filename=None):
     """ Generate an HTML report of query statistics.
     
     :param statistics: An iterable of :class:`.QueryStats` objects over
@@ -161,29 +244,27 @@ def report(statistics, filename = None):
         
     return html
 
-def _before_exec(conn, clause, multiparams, params):
-    """ SQLAlchemy event hook """
-    _local.query_start_time = time.time()
+def _hotfix_dispatch_remove():
+    """ The fix for this bug is in sqlalchemy 0.9.4, until then, we'll
+    monkey patch SQLalchemy so that it works """
+    import sqlalchemy
 
-def _after_exec(conn, clause, multiparams, params, results):
-    """ SQLAlchemy event hook """
-
-    # sqlalchemy doesn't support removing engines from engines yet
-    # this is the hack which will let sqltap.stop still work
-    # check whether this query is executed on one of the registered engines
-    # or the global engine was registered
-    if not(conn.engine in _engines or sqlalchemy.engine.Engine in _engines):
+    if sqlalchemy.__version__ >= "0.9.4":
         return
 
-    context_fn = _engines.get(conn.engine, _engines.get(sqlalchemy.engine.Engine))
+    from sqlalchemy.event.attr import _DispatchDescriptor
+    from sqlalchemy.event import registry
 
-    duration = time.time() - _local.query_start_time
-    context = (None if not context_fn else
-                context_fn(conn, clause, multiparams, params, results))
-    q = QueryStats(clause, traceback.extract_stack()[:-1], duration, context)
-    
-    if not hasattr(_local, "queries"):
-        _local.queries = []
+    def remove(self, event_key):
+        target = event_key.dispatch_target
+        stack = [target]
+        while stack:
+            cls = stack.pop(0)
+            stack.extend(cls.__subclasses__())
+            if cls in self._clslevel:
+                self._clslevel[cls].remove(event_key._listen_fn)
+        registry._removed_from_collection(event_key, self)
 
-    _local.queries.append(q)
+    _DispatchDescriptor.remove = remove
 
+_hotfix_dispatch_remove()
