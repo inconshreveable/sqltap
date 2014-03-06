@@ -17,13 +17,32 @@ sqltap helps you quickly understand:
 When you work at a high level of abstraction, it’s more common for your code to be inefficient and cause performance problems. SQLAlchemy’s ORM is excellent and gives you the flexibility to fix these inefficiencies if you know where to look! sqltap is a library that hooks into SQLAlchemy to collect metrics on all queries you send to your databases. sqltap can help you find where in your application you are generating slow or redundant queries so that you can fix them with minimal effort.
 
 ## Quickstart Example
-
+    
+    import sqltap
+    
     profiler = sqltap.start()
     session.query(Knights).filter_by(who_say = 'Ni').all()
     statistics = profiler.collect()
     sqltap.report(statistics, "report.html")
+    
+## WSGI integration
+
+You can easily integrate SQLTap into any WSGI application. This will create an up-to-date report page at /__sqltap__ where
+you can dynamically enable/disable the profiling so you can easily run it selectively in production. Integrating is super-easy:
+
+    import sqltap.wsgi
+    
+    wsgi_app = sqltap.wsgi.SQLTapMiddleware(wsgi_app)
+    
+For example, to integrate with a Flask application:
+
+    import sqltap.wsgi
+    
+    app = sqltap.wsgi.SQLTapMiddleware(app.wsgi_app)
 
 ## Advanced Example
+
+    import sqltap
 
     def context_fn(*args):
         """ Associate the request path, unique id with each query statistic """
