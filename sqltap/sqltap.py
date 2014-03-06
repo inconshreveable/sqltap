@@ -1,5 +1,5 @@
 import sqlalchemy.engine, sqlalchemy.event
-import traceback, time, collections, sys, mako.template, os, Queue
+import traceback, time, collections, sys, mako.template, os, Queue, string
 
 class QueryStats(object):
     """ Statistics about a query
@@ -205,30 +205,58 @@ def report(statistics, filename=None):
         def __init__(self):
             self.queries = []
             self.stacks = collections.defaultdict(int)
+            self.callers = {}
             self.max = 0
             self.min = sys.maxint
             self.sum = 0
             self.mean = 0
+            self.median = 0
+
+        def find_user_fn(self, stack):
+            """ rough heuristic to try to figure out what user-defined func
+                in the call stack (i.e. not sqlalchemy) issued the query
+            """
+            for frame in reversed(stack):
+                # frame[0] is the file path to the module
+                if 'sqlalchemy' not in frame[0]:
+                    return frame
 
         def add(self, q):
+            if not bool(self.queries):
+                self.text = str(q.text)
+                self.first_word = string.split(self.text, maxsplit=1)[0]
             self.queries.append(q)
-            self.stacks[q.stack] += 1
+            self.stacks[q.stack_text] += 1
+            self.callers[q.stack_text] = self.find_user_fn(q.stack)
 
             self.max = max(self.max, q.duration)
             self.min = min(self.min, q.duration)
             self.sum = self.sum + q.duration
             self.mean = self.sum / len(self.queries)
 
+        def calc_median(self):
+            queries = sorted(self.queries, key=lambda q: q.duration, reverse=True)
+            self.median = self.queries[len(queries)/2].duration
+
     query_groups = collections.defaultdict(QueryGroup)
     all_group = QueryGroup()
 
+    # group together statistics for the same query
     for qstats in statistics:
-        qstats.stack = ''.join(traceback.format_list(qstats.stack))
+        qstats.stack_text = \
+                ''.join(traceback.format_list(qstats.stack)).strip()
 
         group = query_groups[str(qstats.text)]
         group.add(qstats)
         all_group.add(qstats)
 
+    query_groups = sorted(query_groups.values(), key=lambda g: g.sum, reverse=True)
+
+    # calculate the median for each group
+    for g in query_groups:
+        g.calc_median()
+
+    # render the template
     html = mako.template.Template(
         filename = os.path.join(os.path.dirname(__file__), 
                                 "templates", "report.mako")
@@ -238,6 +266,7 @@ def report(statistics, filename=None):
         name = "SQLTap Profiling Report"
     )
 
+    # write it out to a file if you asked for it
     if filename:
         with open(filename, 'w') as f:
             f.write(html)
