@@ -136,7 +136,7 @@ class TestSQLTap(object):
         q.all()
 
         report = sqltap.report(profiler.collect())
-        assert 'SQLTap Report' in report
+        assert 'sqltap profile report' in report
         assert qtext in report
         
 
@@ -159,8 +159,9 @@ class TestSQLTap(object):
             q2.all()
 
         report = sqltap.report(profiler.collect())
+        print report
         assert '2 unique' in report
-        assert 'Query count: 10' in report
+        assert '<dd>10</dd>' in report
 
     def test_start_stop(self):
         sess = self.Session()
