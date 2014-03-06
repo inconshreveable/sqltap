@@ -1,5 +1,0 @@
-include LICENSE
-include README.md
-include sqltap/templates/*
-include doc/source/*
-include doc/Makefile

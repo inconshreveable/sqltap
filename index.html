@@ -1,0 +1,342 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SQLTap - profiling and introspection for SQLAlchemy applications &mdash; sqltap 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="sqltap 0.3 documentation" href="#" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">sqltap 0.3 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body">
+            
+  <div class="section" id="sqltap-profiling-and-introspection-for-sqlalchemy-applications">
+<h1>SQLTap - profiling and introspection for SQLAlchemy applications<a class="headerlink" href="#sqltap-profiling-and-introspection-for-sqlalchemy-applications" title="Permalink to this headline">¶</a></h1>
+<a class="reference internal image-reference" href="_images/sqltap-report-example.png"><img alt="_images/sqltap-report-example.png" class="align-center" src="_images/sqltap-report-example.png" style="height: 500px;" /></a>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>sqltap is a library that allows you to profile and introspect
+the queries that your application makes using SQLAlchemy.</p>
+<dl class="docutils">
+<dt>sqltap helps you understand:</dt>
+<dd><ul class="first last simple">
+<li>how many times a sql query is executed</li>
+<li>how much time your sql queries take</li>
+<li>where your application is issuing sql queries from</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>When you work at a high level of abstraction, it&#8217;s more common for your
+code to be inefficient and cause performance problems. SQLAlchemy&#8217;s ORM
+is excellent and gives you the flexibility to fix these inefficiencies
+if you know where to look! sqltap is a library that hooks into SQLAlchemy
+to collect metrics on all queries you send to your databases. sqltap
+can help you find where in your application you are generating slow or
+redundant queries so that you can fix them with minimal effort.</p>
+<div class="section" id="simple-example">
+<h3>Simple Example<a class="headerlink" href="#simple-example" title="Permalink to this headline">¶</a></h3>
+<p>This is the bare minimum you need to start profiling your application</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">profiler</span> <span class="o">=</span> <span class="n">sqltap</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Knights</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">who_say</span> <span class="o">=</span> <span class="s">&#39;Ni&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+<span class="n">statistics</span> <span class="o">=</span> <span class="n">profiler</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+<span class="n">sqltap</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="n">statistics</span><span class="p">,</span> <span class="s">&quot;report.html&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="advanced-features">
+<h3>Advanced Features<a class="headerlink" href="#advanced-features" title="Permalink to this headline">¶</a></h3>
+<p>sqltap provides the notion of a context function which lets you associate
+arbitrary data with each query as it is issued by sqlalchemy. For example,
+in a web framework, you may want to associate each query with the current
+request or page type so that you can easily aggregate statistics over
+those criteria later.</p>
+<div class="highlight-python"><div class="highlight"><pre>def context_fn(*args):
+    &quot;&quot;&quot; Associate the request path, unique id with each query statistic &quot;&quot;&quot;
+    return (framework.current_request().path,
+            framework.current_request().id)
+
+# start the profiler immediately
+profiler = sqltap.start(user_context_fn=context_fn)
+
+def generate_reports():
+    &quot;&quot;&quot; call this at any time to generate query reports reports &quot;&quot;&quot;
+    all_stats = []
+    per_request_stats = collections.defaultdict(list)
+    per_page_stats = collections.defaultdict(list)
+
+    qstats = profiler.collect()
+    for qs in qstats:
+        all_stats.append(qs)
+
+        page = qstats.user_context[0]
+        per_page_stats[page].append(qs)
+
+        request_id = qstats.user_context[1]
+        per_request_stats[request_id].append(qs)
+
+    # report with all queries
+    sqltap.report(all_stats, &quot;report_all.html&quot;)
+
+    # a report per page
+    for page, stats:
+        sqltap.report(stats, &quot;report_page_%s.html&quot; % page)
+
+    # a report per request
+    for request_id, stats:
+        sqltap.report(stats, &quot;report_request_%s.html&quot; % request_id)
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="modules">
+<h1>Modules<a class="headerlink" href="#modules" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-sqltap">
+<span id="sqltap"></span><h2>sqltap<a class="headerlink" href="#module-sqltap" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="sqltap.start">
+<tt class="descclassname">sqltap.</tt><tt class="descname">start</tt><big>(</big><em>engine=&lt;class 'sqlalchemy.engine.base.Engine'&gt;</em>, <em>user_context_fn=None</em>, <em>collect_fn=None</em><big>)</big><a class="headerlink" href="#sqltap.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new <a class="reference internal" href="#sqltap.ProfilingSession" title="sqltap.ProfilingSession"><tt class="xref py py-class docutils literal"><span class="pre">ProfilingSession</span></tt></a> and call start on it.</p>
+<p>This is a convenience method. See <a class="reference internal" href="#sqltap.ProfilingSession" title="sqltap.ProfilingSession"><tt class="xref py py-class docutils literal"><span class="pre">ProfilingSession</span></tt></a>&#8216;s
+constructor for documentation on the arguments.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A new <a class="reference internal" href="#sqltap.ProfilingSession" title="sqltap.ProfilingSession"><tt class="xref py py-class docutils literal"><span class="pre">ProfilingSession</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="sqltap.ProfilingSession">
+<em class="property">class </em><tt class="descclassname">sqltap.</tt><tt class="descname">ProfilingSession</tt><big>(</big><em>engine=&lt;class 'sqlalchemy.engine.base.Engine'&gt;</em>, <em>user_context_fn=None</em>, <em>collect_fn=None</em><big>)</big><a class="headerlink" href="#sqltap.ProfilingSession" title="Permalink to this definition">¶</a></dt>
+<dd><p>A ProfilingSession captures queries run on an Engine and metadata about them.</p>
+<p>The profiling session hooks into SQLAlchmey and captures query text,
+timing information, and backtraces of where those queries came from.</p>
+<p>You may have multiple profiling sessions active at the same time on
+the same or different Engines. If multiple profiling sessions are
+active on the same engine, queries on that engine will be collected
+by both sessions.</p>
+<p>You may pass a context function to the session&#8217;s constructor which
+will be executed at each query invocation and its result stored with
+that query. This is useful for associating queries with specific
+requests in a web framework, or specific threads in a process.</p>
+<p>By default, a session collects all of <a class="reference internal" href="#sqltap.QueryStats" title="sqltap.QueryStats"><tt class="xref py py-class docutils literal"><span class="pre">QueryStats</span></tt></a> objects in
+an internal queue whose contents you can retrieve by calling
+<a class="reference internal" href="#sqltap.ProfilingSession.collect" title="sqltap.ProfilingSession.collect"><tt class="xref py py-func docutils literal"><span class="pre">ProfilingSession.collect()</span></tt></a>. If you want to collect the query
+results continually, you may do so by passing your own collection
+function to the session&#8217;s constructor.</p>
+<p>You may start, stop, and restart a profiling session as much as you
+like. Calling start on an already started session or stop on an
+already stopped session will raise an <tt class="xref py py-class docutils literal"><span class="pre">AssertionError</span></tt>.</p>
+<p>You may use a profiling session object like a context manager. This
+has the effect of only profiling queries issued while executing
+within the context.</p>
+<p>Example usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">profiler</span> <span class="o">=</span> <span class="n">ProfilingSession</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">profiler</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">Session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Numbers</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Numbers</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="k">print</span> <span class="n">number</span>
+</pre></div>
+</div>
+<p>You may also use a profiling session object like a decorator. This
+has the effect of only profiling queries issued within the decorated
+function.</p>
+<p>Example usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">profiler</span> <span class="o">=</span> <span class="n">ProfilingSession</span><span class="p">()</span>
+
+<span class="nd">@profiler</span>
+<span class="k">def</span> <span class="nf">holy_hand_grenade</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">Session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Numbers</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Numbers</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="k">print</span> <span class="n">number</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="sqltap.ProfilingSession.collect">
+<tt class="descname">collect</tt><big>(</big><big>)</big><a class="headerlink" href="#sqltap.ProfilingSession.collect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all queries collected by this profiling session so far.
+Throws an exception if you passed a <cite>collect_fn</cite> argument to the
+session&#8217;s constructor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sqltap.ProfilingSession.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#sqltap.ProfilingSession.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start profiling</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises AssertionError:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If calling this function when the session 
+is already started.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sqltap.ProfilingSession.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="headerlink" href="#sqltap.ProfilingSession.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop profiling</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises AssertionError:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If calling this function when the session 
+is already stopped.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="sqltap.report">
+<tt class="descclassname">sqltap.</tt><tt class="descname">report</tt><big>(</big><em>statistics</em>, <em>filename=None</em>, <em>template='report.mako'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#sqltap.report" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an HTML report of query statistics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>statistics</strong> &#8211; An iterable of <a class="reference internal" href="#sqltap.QueryStats" title="sqltap.QueryStats"><tt class="xref py py-class docutils literal"><span class="pre">QueryStats</span></tt></a> objects over
+which to prepare a report. This is typically a list returned by
+a call to <tt class="xref py py-func docutils literal"><span class="pre">collect()</span></tt>.</li>
+<li><strong>filename</strong> &#8211; If present, additionally write the html report out 
+to a file at the specified path.</li>
+<li><strong>template</strong> &#8211; The name of the file in the sqltap/templates
+directory to render for the report. This is mostly intended for
+extensions to sqltap (like the wsgi extension).</li>
+<li><strong>kwargs</strong> &#8211; Additional keyword arguments to be passed to the
+template. Intended for extensions.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The generated HTML report.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="sqltap.QueryStats">
+<em class="property">class </em><tt class="descclassname">sqltap.</tt><tt class="descname">QueryStats</tt><big>(</big><em>text</em>, <em>stack</em>, <em>duration</em>, <em>user_context</em><big>)</big><a class="headerlink" href="#sqltap.QueryStats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Statistics about a query</p>
+<p>You should not create these objects, but your application will receive
+a list of them as the result of a call to <a class="reference internal" href="#sqltap.ProfilingSession.collect" title="sqltap.ProfilingSession.collect"><tt class="xref py py-func docutils literal"><span class="pre">ProfilingSession.collect()</span></tt></a>
+You may wish to to inspect of filter them before passing them into
+<a class="reference internal" href="#sqltap.report" title="sqltap.report"><tt class="xref py py-func docutils literal"><span class="pre">sqltap.report()</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Attr text:</th><td class="field-body">The text of the query</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Attr stack:</th><td class="field-body">The stack trace when this query was issued. Formatted as
+returned by py:func:<cite>traceback.extract_stack</cite></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Attr duration:</th><td class="field-body">Duration of the query in seconds.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Attr user_context:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">The value returned by the user_context_fn set 
+with <a class="reference internal" href="#sqltap.start" title="sqltap.start"><tt class="xref py py-func docutils literal"><span class="pre">sqltap.start()</span></tt></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-sqltap.wsgi">
+<span id="sqltap-wsgi"></span><h2>sqltap.wsgi<a class="headerlink" href="#module-sqltap.wsgi" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sqltap.wsgi.SQLTapMiddleware">
+<em class="property">class </em><tt class="descclassname">sqltap.wsgi.</tt><tt class="descname">SQLTapMiddleware</tt><big>(</big><em>app</em>, <em>path='/__sqltap__'</em><big>)</big><a class="headerlink" href="#sqltap.wsgi.SQLTapMiddleware" title="Permalink to this definition">¶</a></dt>
+<dd><p>SQLTap dashboard middleware for WSGI applications.</p>
+<p>For example, if you are using Flask:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">app</span><span class="o">.</span><span class="n">wsgi_app</span> <span class="o">=</span> <span class="n">SQLTapMiddleware</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">wsgi_app</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And then you can use SQLTap dashboard from <tt class="docutils literal"><span class="pre">/__sqltap__</span></tt> page (this
+path prefix can be set by <tt class="docutils literal"><span class="pre">path</span></tt> parameter).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>app</strong> &#8211; A WSGI application object to be wrap.</li>
+<li><strong>path</strong> &#8211; A path prefix for access. Default is <cite>&#8216;/__sqltap__&#8217;</cite></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">sqltap 0.3 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, inconshreveable.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
