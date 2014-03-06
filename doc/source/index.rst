@@ -5,7 +5,7 @@ SQLTap - profiling and introspection for SQLAlchemy applications
 ================================================================
 
 
-.. image:: images/sqltap-report-example.jpg
+.. image:: images/sqltap-report-example.png
     :align: center
     :height: 500px
 
@@ -23,10 +23,13 @@ sqltap helps you understand:
 
 Motivation
 ----------
-ORM's are notorious for issuing queries that are not performant
-or issuing far more queries than necessary. sqltap gives you flexible
-visibility into how your application is using SQLAlchemy so you can
-find and fix these problems with minimal effort.
+When you work at a high level of abstraction, it's more common for your
+code to be inefficient and cause performance problems. SQLAlchemy's ORM
+is excellent and gives you the flexibility to fix these inefficiencies
+if you know where to look! sqltap is a library that hooks into SQLAlchemy
+to collect metrics on all queries you send to your databases. sqltap
+can help you find where in your application you are generating slow or
+redundant queries so that you can fix them with minimal effort.
 
 Simple Example
 ^^^^^^^^^^^^^^
@@ -34,9 +37,9 @@ This is the bare minimum you need to start profiling your application
 
 ::
 
-    sqltap.start()
-    session.Query(Knights).filter(who_say = 'Ni').fetchall()
-    statistics = sqltap.collect()
+    profiler = sqltap.start()
+    session.query(Knights).filter_by(who_say = 'Ni').all()
+    statistics = profiler.collect()
     sqltap.report(statistics, "report.html")
 
 
@@ -50,46 +53,40 @@ those criteria later.
 
 ::
 
-    all_statistics = []
+    def context_fn(*args):
+        """ Associate the request path, unique id with each query statistic """
+        return (framework.current_request().path,
+                framework.current_request().id)
 
-    def on_application_start():
-        # Associate the request path, and request identifier with the
-        # query statistics.
-        def context_fn(*args):
-            return (framework.current_request().path,
-                    framework.current_request().id)
+    # start the profiler immediately
+    profiler = sqltap.start(user_context_fn=context_fn)
 
-        sqltap.start(user_context_fn = context_fn)
-        
+    def generate_reports():
+        """ call this at any time to generate query reports reports """
+        all_stats = []
+        per_request_stats = collections.defaultdict(list)
+        per_page_stats = collections.defaultdict(list)
 
-    def after_request():
-        # Generate pre-request reports
-        statistics = sqltap.collect()
-        all_statistics.append(statistics)
+        qstats = profiler.collect()
+        for qs in qstats:
+            all_stats.append(qs)
 
-        def filter_request(qstats):
+            page = qstats.user_context[0]
+            per_page_stats[page].append(qs)
+
             request_id = qstats.user_context[1]
-            return request_id = framework.current_request().id
+            per_request_stats[request_id].append(qs)
 
-        request_stats = filter(filter_request, statistics)
-        sqltap.report(request_stats, "report.html")
+        # report with all queries
+        sqltap.report(all_stats, "report_all.html")
 
+        # a report per page
+        for page, stats:
+            sqltap.report(stats, "report_page_%s.html" % page)
 
-    def once_per_day():
-        # Once per day, generate reports for each of the major
-        # areas of the website
-        all_paths = ["/Books", "/Movies", "/User", "/Account"]
-
-        # Get all of the statistics for each page type
-        for path in all_paths:
-
-            def filter_path(qstats):
-                request_path = qstats.user_context[0]
-                return request_path.startswith(path)
-
-            path_stats = filter(filter_path, all_statistics)
-            sqltap.report(path_stats, "%s-report.html" % path[1:])
-
+        # a report per request
+        for request_id, stats:
+            sqltap.report(stats, "report_request_%s.html" % request_id)
 
 Modules
 =======
@@ -97,17 +94,7 @@ Modules
 sqltap
 ----------------------------------
 .. automodule:: sqltap
-   :members: start, stop, collect, report, QueryStats
-
-sqltap.ctx
-----------------------------------
-.. automodule:: sqltap.ctx
-   :members:
-
-sqltap.dec
-----------------------------------
-.. automodule:: sqltap.dec
-   :members:
+   :members: start, ProfilingSession, report, QueryStats
 
 sqltap.wsgi
 ----------------------------------

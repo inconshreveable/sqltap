@@ -17,12 +17,12 @@ SQLTap is hosted on github at: https://github.com/aes-/sqltap
 
 setup(
     name = "sqltap",
-    version = "0.2",
+    version = "0.3",
     description = "Profiling and introspection for applications using sqlalchemy",
     long_description = long_description,
-    author = "aes",
-    author_email = "alan@you-compete.com",
-    url = "https://github.com/aes-/sqltap",
+    author = "inconshreveable",
+    author_email = "alan@inconshreveable.com",
+    url = "https://github.com/inconshreveable/sqltap",
     packages = ["sqltap"],
     package_data = {"sqltap" : ["templates/*.mako"]},
     install_requires = [
@@ -30,7 +30,7 @@ setup(
         "Mako >= 0.3"
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache License',
         'Operating System :: OS Independent',

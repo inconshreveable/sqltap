@@ -13,9 +13,10 @@ import sqlalchemy.event
 class QueryStats(object):
     """ Statistics about a query
 
-    You should not create these objects, but your application may choose
-    inspect them in the filter functions you pass to :func:`sqltap.collect`
-    and :func:`sqltap.purge`.
+    You should not create these objects, but your application will receive
+    a list of them as the result of a call to :func:`ProfilingSession.collect`
+    You may wish to to inspect of filter them before passing them into
+    :func:`sqltap.report`.
     
     :attr text: The text of the query
     :attr stack: The stack trace when this query was issued. Formatted as
@@ -54,7 +55,7 @@ class ProfilingSession(object):
 
     You may start, stop, and restart a profiling session as much as you
     like. Calling start on an already started session or stop on an
-    already stopped session will raise an AssertionError.
+    already stopped session will raise an :class:`AssertionError`.
 
     You may use a profiling session object like a context manager. This
     has the effect of only profiling queries issued while executing
@@ -200,7 +201,7 @@ def start(engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None
 def report(statistics, filename=None, template="report.mako", **kwargs):
     """ Generate an HTML report of query statistics.
     
-    :param statistics: An iterable of :class:`.QueryStats` objects over
+    :param statistics: An iterable of :class:`QueryStats` objects over
         which to prepare a report. This is typically a list returned by
         a call to :func:`collect`.
 
@@ -211,8 +212,8 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
         directory to render for the report. This is mostly intended for
         extensions to sqltap (like the wsgi extension).
 
-    :param **kwargs: A dictionary of additional arguments to be passed
-        to the template. Intended for extensions.
+    :param kwargs: Additional keyword arguments to be passed to the
+        template. Intended for extensions.
 
     :return: The generated HTML report.
     """
