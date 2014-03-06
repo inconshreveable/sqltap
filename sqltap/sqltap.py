@@ -1,5 +1,14 @@
-import sqlalchemy.engine, sqlalchemy.event
-import traceback, time, collections, sys, mako.template, os, Queue, string
+import time
+import traceback
+import collections
+import sys
+import os
+import Queue
+import string
+import mako.template
+import mako.lookup
+import sqlalchemy.engine
+import sqlalchemy.event
 
 class QueryStats(object):
     """ Statistics about a query
@@ -188,7 +197,7 @@ def start(engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None
     session.start()
     return session
 
-def report(statistics, filename=None):
+def report(statistics, filename=None, template="report.mako", **kwargs):
     """ Generate an HTML report of query statistics.
     
     :param statistics: An iterable of :class:`.QueryStats` objects over
@@ -197,6 +206,13 @@ def report(statistics, filename=None):
 
     :param filename: If present, additionally write the html report out 
         to a file at the specified path.
+
+    :param template: The name of the file in the sqltap/templates
+        directory to render for the report. This is mostly intended for
+        extensions to sqltap (like the wsgi extension).
+
+    :param **kwargs: A dictionary of additional arguments to be passed
+        to the template. Intended for extensions.
 
     :return: The generated HTML report.
     """
@@ -256,14 +272,17 @@ def report(statistics, filename=None):
     for g in query_groups:
         g.calc_median()
 
+    # create the template lookup
+    # (we need this for extensions inheriting the base template)
+    tmpl_dir = os.path.join(os.path.dirname(__file__), "templates")
+    lookup = mako.lookup.TemplateLookup(tmpl_dir)
+
     # render the template
-    html = mako.template.Template(
-        filename = os.path.join(os.path.dirname(__file__), 
-                                "templates", "report.mako")
-    ).render(
+    html = lookup.get_template(template).render(
         query_groups = query_groups,
         all_group = all_group,
-        name = "SQLTap Profiling Report"
+        name = "SQLTap Profiling Report",
+        **kwargs
     )
 
     # write it out to a file if you asked for it

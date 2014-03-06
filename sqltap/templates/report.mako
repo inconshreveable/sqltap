@@ -40,10 +40,11 @@
             <li><a target="_blank" href="https://sqltap.you-compete.com/">Documentation</a></li>
             <li><a target="_blank" href="https://github.com/inconshreveable/sqltap">Code</a></li>
           </ul>
-            <p id="total-time" class="navbar-text">
-              <span class="count">${len(all_group.queries)}</span> queries spent 
-              <span class="sum">${'%.2f' % all_group.sum}</span> seconds
-            </p>
+          <p id="total-time" class="navbar-text">
+            <span class="count">${len(all_group.queries)}</span> queries spent 
+            <span class="sum">${'%.2f' % all_group.sum}</span> seconds
+          </p>
+          <%block name="header_extra"></%block>
         </div>
       </div>
       <h1>
