@@ -6,6 +6,8 @@ sqltap helps you quickly understand:
    * how much time your sql queries take
    * where your application is issuing sql queries from
 
+![](https://inconshreveable.github.io/sqltap/_images/sqltap-report-example.png)
+
 ## Full Documentation
 
 [http://sqltap.inconshreveable.com](http://sqltap.inconshreveable.com)
