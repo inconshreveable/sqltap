@@ -8,7 +8,7 @@ sqltap helps you quickly understand:
 
 ## Full Documentation
 
-[https://sqltap.you-compete.com](https://sqltap.you-compete.com)
+[http://sqltap.inconshreveable.com](http://sqltap.inconshreveable.com)
 
 ## Motivation
 
