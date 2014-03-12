@@ -17,7 +17,7 @@ SQLTap is hosted on github at: https://github.com/inconshreveable/sqltap
 
 setup(
     name = "sqltap",
-    version = "0.3",
+    version = "0.3.1",
     description = "Profiling and introspection for applications using sqlalchemy",
     long_description = long_description,
     author = "inconshreveable",
@@ -26,7 +26,7 @@ setup(
     packages = ["sqltap"],
     package_data = {"sqltap" : ["templates/*.mako"]},
     install_requires = [
-        "SQLAlchemy >= 0.8",
+        "SQLAlchemy >= 0.9",
         "Mako >= 0.4.1"
     ],
     classifiers=[
