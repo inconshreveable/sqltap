@@ -3,7 +3,10 @@ import traceback
 import collections
 import sys
 import os
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import string
 import mako.template
 import mako.lookup
@@ -109,7 +112,7 @@ class ProfilingSession(object):
             self.collect_fn = collect_fn
         else:
             # we're doing the collecting, make an unbounded thread-safe queue
-            self.collector = Queue.Queue(0)
+            self.collector = queue.Queue(0)
             self.collect_fn = self.collector.put
 
     def _before_exec(self, conn, clause, multiparams, params):
@@ -140,7 +143,7 @@ class ProfilingSession(object):
         try:
             while True:
                 queries.append(self.collector.get(block=False))
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         return queries

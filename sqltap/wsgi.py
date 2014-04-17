@@ -1,6 +1,9 @@
 import urlparse
 import sqltap
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 class SQLTapMiddleware(object):
     """ SQLTap dashboard middleware for WSGI applications.
@@ -20,7 +23,7 @@ class SQLTapMiddleware(object):
         self.app = app
         self.path = path.rstrip('/')
         self.on = False
-        self.collector = Queue.Queue(0)
+        self.collector = queue.Queue(0)
         self.stats = []
         self.profiler = sqltap.ProfilingSession(collect_fn=self.collector.put)
 
@@ -74,7 +77,7 @@ class SQLTapMiddleware(object):
         try:
             while True:
                 self.stats.append(self.collector.get(block=False))
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         return self.render_response(start_response)
