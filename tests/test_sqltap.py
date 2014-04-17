@@ -157,7 +157,7 @@ class TestSQLTap(object):
         q.all()
             
         q2 = sess.query(self.A).filter(self.A.id == 10)
-        for i in xrange(10):
+        for i in range(10):
             q2.all()
 
         report = sqltap.report(profiler.collect())
