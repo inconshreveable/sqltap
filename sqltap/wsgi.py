@@ -1,5 +1,7 @@
+from __future__ import absolute_import
+
 import urlparse
-import sqltap
+from . import sqltap
 try:
     import queue
 except ImportError:
