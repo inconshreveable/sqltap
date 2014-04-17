@@ -246,7 +246,7 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
         def add(self, q):
             if not bool(self.queries):
                 self.text = str(q.text)
-                self.first_word = string.split(self.text, maxsplit=1)[0]
+                self.first_word = self.text.split()[0]
             self.queries.append(q)
             self.stacks[q.stack_text] += 1
             self.callers[q.stack_text] = self.find_user_fn(q.stack)
