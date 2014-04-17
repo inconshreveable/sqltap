@@ -1,3 +1,5 @@
+from __future__ import division
+
 import time
 import traceback
 import collections
@@ -256,7 +258,13 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
 
         def calc_median(self):
             queries = sorted(self.queries, key=lambda q: q.duration, reverse=True)
-            self.median = self.queries[len(queries)/2].duration
+            length = len(queries)
+            if not length % 2:
+                x1 = queries[length // 2].duration
+                x2 = queries[length // 2 - 1].duration
+                self.median = (x1 + x2) / 2
+            else:
+                self.median = queries[length // 2].duration
 
     query_groups = collections.defaultdict(QueryGroup)
     all_group = QueryGroup()
