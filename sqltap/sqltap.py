@@ -227,7 +227,7 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
             self.stacks = collections.defaultdict(int)
             self.callers = {}
             self.max = 0
-            self.min = sys.maxint
+            self.min = sys.maxsize
             self.sum = 0
             self.mean = 0
             self.median = 0
