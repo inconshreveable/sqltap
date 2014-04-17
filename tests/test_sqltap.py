@@ -7,7 +7,7 @@ import sqltap, unittest
 import nose.tools
 
 def _startswith(qs, text):
-    return filter(lambda q: str(q.text).startswith(text), qs)
+    return list(filter(lambda q: str(q.text).startswith(text), qs))
 
 class TestSQLTap(object):
 
