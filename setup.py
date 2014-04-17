@@ -17,7 +17,7 @@ SQLTap is hosted on github at: https://github.com/inconshreveable/sqltap
 
 setup(
     name = "sqltap",
-    version = "0.3.1",
+    version = "0.3.2",
     description = "Profiling and introspection for applications using sqlalchemy",
     long_description = long_description,
     author = "inconshreveable",
@@ -35,6 +35,7 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: Database'
     ]
 )
