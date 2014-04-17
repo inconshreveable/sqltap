@@ -1,9 +1,14 @@
+from __future__ import division
+
 import time
 import traceback
 import collections
 import sys
 import os
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import string
 import mako.template
 import mako.lookup
@@ -109,7 +114,7 @@ class ProfilingSession(object):
             self.collect_fn = collect_fn
         else:
             # we're doing the collecting, make an unbounded thread-safe queue
-            self.collector = Queue.Queue(0)
+            self.collector = queue.Queue(0)
             self.collect_fn = self.collector.put
 
     def _before_exec(self, conn, clause, multiparams, params):
@@ -140,7 +145,7 @@ class ProfilingSession(object):
         try:
             while True:
                 queries.append(self.collector.get(block=False))
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         return queries
@@ -224,7 +229,7 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
             self.stacks = collections.defaultdict(int)
             self.callers = {}
             self.max = 0
-            self.min = sys.maxint
+            self.min = sys.maxsize
             self.sum = 0
             self.mean = 0
             self.median = 0
@@ -241,7 +246,7 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
         def add(self, q):
             if not bool(self.queries):
                 self.text = str(q.text)
-                self.first_word = string.split(self.text, maxsplit=1)[0]
+                self.first_word = self.text.split()[0]
             self.queries.append(q)
             self.stacks[q.stack_text] += 1
             self.callers[q.stack_text] = self.find_user_fn(q.stack)
@@ -253,7 +258,13 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
 
         def calc_median(self):
             queries = sorted(self.queries, key=lambda q: q.duration, reverse=True)
-            self.median = self.queries[len(queries)/2].duration
+            length = len(queries)
+            if not length % 2:
+                x1 = queries[length // 2].duration
+                x2 = queries[length // 2 - 1].duration
+                self.median = (x1 + x2) / 2
+            else:
+                self.median = queries[length // 2].duration
 
     query_groups = collections.defaultdict(QueryGroup)
     all_group = QueryGroup()
