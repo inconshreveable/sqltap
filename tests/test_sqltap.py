@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
@@ -159,7 +161,7 @@ class TestSQLTap(object):
             q2.all()
 
         report = sqltap.report(profiler.collect())
-        print report
+        print(report)
         assert '2 unique' in report
         assert '<dd>10</dd>' in report
 
