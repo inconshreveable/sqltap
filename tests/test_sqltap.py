@@ -3,8 +3,11 @@ from __future__ import print_function
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
-import sqltap, unittest
 import nose.tools
+
+import sqltap
+import sqltap.wsgi
+
 
 def _startswith(qs, text):
     return list(filter(lambda q: str(q.text).startswith(text), qs))
@@ -275,3 +278,7 @@ class TestSQLTap(object):
         def noop(): pass
         profiler = sqltap.start(self.engine, collect_fn=noop)
         profiler.collect()
+
+    def test_can_construct_wsgi_wrapper(self):
+        """Only verifies that the imports and __init__ work, not a real Test."""
+        sqltap.wsgi.SQLTapMiddleware(app=None)
