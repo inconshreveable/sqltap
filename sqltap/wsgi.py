@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
-import urlparse
+try:
+    import urllib.parse as urlparse
+except ImportError:
+    import urlparse
 from . import sqltap
 try:
     import queue
