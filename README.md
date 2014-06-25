@@ -27,7 +27,7 @@ When you work at a high level of abstraction, it’s more common for your code t
     
 ## WSGI integration
 
-You can easily integrate SQLTap into any WSGI application. This will create an up-to-date report page at /__sqltap__ where
+You can easily integrate SQLTap into any WSGI application. This will create an up-to-date report page at /\_\_sqltap\_\_ where
 you can dynamically enable/disable the profiling so you can easily run it selectively in production. Integrating is super-easy:
 
     import sqltap.wsgi
