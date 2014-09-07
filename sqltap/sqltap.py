@@ -130,8 +130,13 @@ class ProfilingSession(object):
         context = (None if not self.user_context_fn else
                    self.user_context_fn(conn, clause, multiparams, params, results))
 
+        try:
+            text = clause.compile(dialect=conn.engine.dialect)
+        except AttributeError:
+            text = clause
+
         # add the querystats to the collector
-        self.collect_fn(QueryStats(clause, traceback.extract_stack()[:-1], duration, context))
+        self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1], duration, context))
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.
