@@ -64,17 +64,17 @@ class SQLTapMiddleware(object):
             except ValueError:
                 clen = 0
             body = urlparse.parse_qs(environ['wsgi.input'].read(clen))
-            clear = body.get('clear', None)
+            clear = body.get(b'clear', None)
             if clear:
               del self.stats[:]
               return self.render_response(start_response)
 
-            turn = body.get('turn', ' ')[0].strip().lower()
-            if turn not in ('on', 'off'):
+            turn = body.get(b'turn', b' ')[0].strip().lower()
+            if turn not in (b'on', b'off'):
                 start_response('400 Bad Request',
                                [('Content-Type', 'text/plain')])
-                return ['400 Bad Request: parameter "turn=(on|off)" required']
-            if turn == 'on':
+                return [b'400 Bad Request: parameter "turn=(on|off)" required']
+            if turn == b'on':
                 self.start()
             else:
                 self.stop()
