@@ -38,7 +38,7 @@ For example, to integrate with a Flask application:
 
     import sqltap.wsgi
     
-    app = sqltap.wsgi.SQLTapMiddleware(app.wsgi_app)
+    app.wsgi_app = sqltap.wsgi.SQLTapMiddleware(app.wsgi_app)
 
 ## Advanced Example
 
