@@ -282,3 +282,24 @@ class TestSQLTap(object):
     def test_can_construct_wsgi_wrapper(self):
         """Only verifies that the imports and __init__ work, not a real Test."""
         sqltap.wsgi.SQLTapMiddleware(app=None)
+
+    def test_report_escaped(self):
+        """ Test that . """
+        engine2 = create_engine('sqlite:///:memory:', echo=True)
+
+        Base = declarative_base(bind = engine2)
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column("id", Unicode, primary_key = True)
+
+        Base.metadata.create_all(engine2)
+        Session = sessionmaker(bind=engine2)
+        profiler = sqltap.start(engine2)
+
+        sess = Session()
+        sess.query(B).filter(B.id == u"<blockquote class='test'>").all()
+
+        report = sqltap.report(profiler.collect())
+        assert "<blockquote class='test'>" not in report
+        assert "&#34;&lt;blockquote class=&#39;test&#39;&gt;&#34;" in report

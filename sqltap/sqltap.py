@@ -292,7 +292,7 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
     # create the template lookup
     # (we need this for extensions inheriting the base template)
     tmpl_dir = os.path.join(os.path.dirname(__file__), "templates")
-    lookup = mako.lookup.TemplateLookup(tmpl_dir)
+    lookup = mako.lookup.TemplateLookup(tmpl_dir, default_filters=['unicode', 'h']) # mako fixes unicode -> str on py3k
 
     # render the template
     html = lookup.get_template(template).render(
