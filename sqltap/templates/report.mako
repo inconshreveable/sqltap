@@ -99,6 +99,17 @@ ${group.first_word}
 
               <hr />
               <pre><code>${group.text}</code></pre>
+              <hr />
+
+              <h4>Params</h4>
+              % for query_index, query in enumerate(group.queries):
+              <h5>Query ${query_index}:</h5>
+              <pre><code>
+                % for param_key, param_value in query.text.params.iteritems():
+                    ${param_key}: ${param_value}
+                % endfor
+              </code></pre>
+              % endfor
 
               <hr />
               <% stack_count = len(group.stacks) %>
