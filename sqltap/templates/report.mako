@@ -101,15 +101,31 @@ ${group.first_word}
               <pre><code>${group.text}</code></pre>
               <hr />
 
-              <h4>Params</h4>
-              % for query_index, query in enumerate(group.queries):
-              <h5>Query ${query_index}:</h5>
-              <pre><code>
-                % for param_key, param_value in query.text.params.iteritems():
-                    ${param_key}: ${param_value}
+              <%
+                params = group.queries[0].text.params.keys()
+              %>
+              <h4>
+                Query Breakdown
+              </h4>
+              <table class="table">
+                <tr>
+                  <th>Query Time</th>
+                % for param_name in params:
+                  <th><code>${param_name}</code></th>
                 % endfor
-              </code></pre>
-              % endfor
+                </tr>
+                % for idx, query in enumerate(reversed(group.queries)):
+                <tr class="${'hidden' if idx >= 3 else ''}">
+                    <td>${'%.3f' % query.duration}</td>
+                    % for param_name in params:
+                    <td>${query.text.params[param_name]}</td>
+                    % endfor
+                </tr>
+                % endfor
+              </table>
+              % if len(group.queries) > 3:
+                <a href="#" class="morequeries">show ${len(group.queries)-3} older queries</a>
+              % endif
 
               <hr />
               <% stack_count = len(group.stacks) %>
@@ -155,6 +171,11 @@ ${group.first_word}
             $('#myTabs a').click(function (e) {
                 $(this).tab('show');
                 e.preventDefault();
+            });
+            $(".morequeries").click(function(e) {
+                e.preventDefault();
+                $(this).hide();
+                $(this).prev("table").find("tr.hidden").removeClass("hidden");
             });
         });
     </script>
