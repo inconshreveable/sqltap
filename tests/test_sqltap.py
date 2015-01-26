@@ -4,6 +4,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
 import nose.tools
+from werkzeug.test import Client
+from werkzeug.wrappers import BaseResponse
 
 import sqltap
 import sqltap.wsgi
@@ -100,7 +102,7 @@ class TestSQLTap(object):
 
         stats = _startswith(profiler.collect(), 'SELECT')
         assert len(stats) == 2
-        
+
     @nose.tools.raises(AssertionError)
     def test_start_twice(self):
         """ Ensure that multiple calls to ProfilingSession.start() raises assertion
@@ -143,7 +145,7 @@ class TestSQLTap(object):
         report = sqltap.report(profiler.collect())
         assert 'sqltap profile report' in report
         assert qtext in report
-        
+
 
     def test_report_aggregation(self):
         """
@@ -158,7 +160,7 @@ class TestSQLTap(object):
 
         q.all()
         q.all()
-            
+
         q2 = sess.query(self.A).filter(self.A.id == 10)
         for i in range(10):
             q2.all()
@@ -196,9 +198,9 @@ class TestSQLTap(object):
         @profiled
         def test_function():
             self.Session().query(self.A).all()
-            
+
         q.all()
-        
+
         stats = profiled.collect()
         assert len(_startswith(stats, 'SELECT')) == 0
 
@@ -216,9 +218,9 @@ class TestSQLTap(object):
 
         with profiled:
             q.all()
-                
+
         q.all()
-        
+
         stats = profiled.collect()
         assert len(_startswith(stats, 'SELECT')) == 1
 
@@ -279,10 +281,6 @@ class TestSQLTap(object):
         profiler = sqltap.start(self.engine, collect_fn=noop)
         profiler.collect()
 
-    def test_can_construct_wsgi_wrapper(self):
-        """Only verifies that the imports and __init__ work, not a real Test."""
-        sqltap.wsgi.SQLTapMiddleware(app=None)
-
     def test_report_escaped(self):
         """ Test that . """
         engine2 = create_engine('sqlite:///:memory:', echo=True)
@@ -303,3 +301,46 @@ class TestSQLTap(object):
         report = sqltap.report(profiler.collect())
         assert "<blockquote class='test'>" not in report
         assert "&#34;&lt;blockquote class=&#39;test&#39;&gt;&#34;" in report
+
+
+class TestSQLTapMiddleware(TestSQLTap):
+
+    def setUp(self):
+        super(TestSQLTapMiddleware, self).setUp()
+        from werkzeug.testapp import test_app
+        self.app = sqltap.wsgi.SQLTapMiddleware(app=test_app)
+        self.client = Client(self.app, BaseResponse)
+
+    def test_can_construct_wsgi_wrapper(self):
+        """Only verifies that the imports and __init__ work, not a real Test."""
+        sqltap.wsgi.SQLTapMiddleware(self.app)
+
+    def test_wsgi_get_request(self):
+        """Verify we can get the middleware path"""
+        response = self.client.get(self.app.path)
+        assert response.status_code == 200
+        assert 'text/html' in response.headers['content-type']
+
+    def test_wsgi_post_turn_on(self):
+        """Verify we can POST turn=on to middleware"""
+        response = self.client.post(self.app.path, data='turn=on')
+        assert response.status_code == 200
+        assert 'text/html' in response.headers['content-type']
+
+    def test_wsgi_post_turn_off(self):
+        """Verify we can POST turn=off to middleware"""
+        response = self.client.post(self.app.path, data='turn=off')
+        assert response.status_code == 200
+        assert 'text/html' in response.headers['content-type']
+
+    def test_wsgi_post_turn_400(self):
+        """Verify we POSTing and invalid turn value returns a 400"""
+        response = self.client.post(self.app.path, data='turn=invalid_string')
+        assert response.status_code == 400
+        assert 'text/plain' in response.headers['content-type']
+
+    def test_wsgi_post_clear(self):
+        """Verify we can POST clean=1 works"""
+        response = self.client.post(self.app.path, data='clear=1')
+        assert response.status_code == 200
+        assert 'text/html' in response.headers['content-type']

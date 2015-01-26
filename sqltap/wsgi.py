@@ -10,6 +10,8 @@ try:
 except ImportError:
     import Queue as queue
 
+from werkzeug.wrappers import Response
+
 class SQLTapMiddleware(object):
     """ SQLTap dashboard middleware for WSGI applications.
 
@@ -37,7 +39,7 @@ class SQLTapMiddleware(object):
         if path == self.path or path == self.path + '/':
             return self.render(environ, start_response)
         return self.app(environ, start_response)
-    
+
     def start(self):
         if not self.on:
             self.on = True
@@ -51,11 +53,9 @@ class SQLTapMiddleware(object):
     def render(self, environ, start_response):
         verb = environ.get('REQUEST_METHOD', 'GET').strip().upper()
         if verb not in ('GET', 'POST'):
-            start_response('405 Method Not Allowed', [
-                ('Allow', 'GET, POST'),
-                ('Content-Type', 'text/plain')
-            ])
-            return ['405 Method Not Allowed']
+            response = Response('405 Method Not Allowed', status=405, mimetype='text/plain')
+            response.headers['Allow'] = 'GET, POST'
+            return response(environ, start_response)
 
         # handle on/off switch
         if verb == 'POST':
@@ -63,17 +63,18 @@ class SQLTapMiddleware(object):
                 clen = int(environ.get('CONTENT_LENGTH', '0'))
             except ValueError:
                 clen = 0
-            body = urlparse.parse_qs(environ['wsgi.input'].read(clen))
+            body = environ['wsgi.input'].read(clen).decode('utf-8')
+            body = urlparse.parse_qs(body)
             clear = body.get('clear', None)
             if clear:
-              del self.stats[:]
-              return self.render_response(start_response)
+                del self.stats[:]
+                return self.render_response(environ, start_response)
 
             turn = body.get('turn', ' ')[0].strip().lower()
             if turn not in ('on', 'off'):
-                start_response('400 Bad Request',
-                               [('Content-Type', 'text/plain')])
-                return ['400 Bad Request: parameter "turn=(on|off)" required']
+                response = Response('400 Bad Request: parameter "turn=(on|off)" required',
+                                    status='400', mimetype='text/plain')
+                return response(environ, start_response)
             if turn == 'on':
                 self.start()
             else:
@@ -85,9 +86,9 @@ class SQLTapMiddleware(object):
         except queue.Empty:
             pass
 
-        return self.render_response(start_response)
+        return self.render_response(environ, start_response)
 
-    def render_response(self, start_response):
-        start_response('200 OK', [('Content-Type', 'text/html')])
+    def render_response(self, environ, start_response):
         html = sqltap.report(self.stats, middleware=self, template="wsgi.mako")
-        return [html.encode('utf-8')]
+        response = Response(html.encode('utf-8'), mimetype="text/html")
+        return response(environ, start_response)

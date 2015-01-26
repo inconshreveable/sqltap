@@ -27,7 +27,8 @@ setup(
     package_data = {"sqltap" : ["templates/*.mako"]},
     install_requires = [
         "SQLAlchemy >= 0.9",
-        "Mako >= 0.4.1"
+        "Mako >= 0.4.1",
+        "Werkzeug >= 0.9.6"
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -39,4 +40,3 @@ setup(
         'Topic :: Database'
     ]
 )
-
