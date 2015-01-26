@@ -41,7 +41,7 @@
             <li><a target="_blank" href="https://github.com/inconshreveable/sqltap">Code</a></li>
           </ul>
           <p id="total-time" class="navbar-text">
-            <span class="count">${len(all_group.queries)}</span> queries spent 
+            <span class="count">${len(all_group.queries)}</span> queries spent
             <span class="sum">${'%.2f' % all_group.sum}</span> seconds
           </p>
           <%block name="header_extra"></%block>
@@ -51,7 +51,7 @@
       </h1>
       <div class="row">
         <div class="col-xs-3" id="query-groups" style="min-height: 600px">
-    
+
           <ul class="nav nav-pills nav-stacked" id="myTabs">
             % for i, group in enumerate(query_groups):
             <li class="${'active' if i==0 else ''}">
@@ -60,7 +60,7 @@
                 <span class="label label-info pull-right" style="margin-right: 5px">
                   ${len(group.queries)}
                 </span>
-${group.first_word} 
+${group.first_word}
               </a>
             </li>
           % endfor
@@ -162,6 +162,7 @@ ${group.first_word}
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     <script>hljs.initHighlightingOnLoad();</script>
     <script type="text/javascript">
         jQuery(function($) {
