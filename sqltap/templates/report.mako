@@ -102,7 +102,7 @@ ${group.first_word}
               <hr />
 
               <%
-                params = group.queries[0].text.params.keys()
+                params = group.queries[0].params.keys()
               %>
               <h4>
                 Query Breakdown

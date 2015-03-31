@@ -32,6 +32,7 @@ class QueryStats(object):
     """
     def __init__(self, text, stack, duration, user_context):
         self.text = text
+        self.params = getattr(text, 'params', {})
         self.stack = stack
         self.duration = duration
         self.user_context = user_context
