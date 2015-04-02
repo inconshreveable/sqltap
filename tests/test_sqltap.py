@@ -146,6 +146,17 @@ class TestSQLTap(object):
         assert 'sqltap profile report' in report
         assert qtext in report
 
+    def test_report_raw_sql(self):
+        """ Ensure that reporting works when raw SQL queries were emitted. """
+        profiler = sqltap.start(self.engine)
+
+        sess = self.Session()
+        sql = 'SELECT * FROM %s' % self.A.__tablename__
+        sess.connection().execute(sql)
+
+        report = sqltap.report(profiler.collect())
+        assert 'sqltap profile report' in report
+        assert sql in report
 
     def test_report_aggregation(self):
         """
