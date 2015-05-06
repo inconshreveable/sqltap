@@ -116,8 +116,11 @@ class TestSQLTap(object):
         profiler.start()
         try:
             profiler.start()
+            raise ValueError("Second start should have asserted")
         except AssertionError:
             pass
+        except:
+            assert False, "Got some non-assertion exception"
         profiler.stop()
 
     def test_stop(self):
