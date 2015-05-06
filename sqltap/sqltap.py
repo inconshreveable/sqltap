@@ -37,6 +37,10 @@ class QueryStats(object):
         self.duration = duration
         self.user_context = user_context
 
+    def __repr__(self):
+        return "<%s text=%r params=%r duration=%f>" % (
+            self.__class__.__name__, self.text, self.params, self.duration)
+
 class ProfilingSession(object):
     """ A ProfilingSession captures queries run on an Engine and metadata about them.
 
@@ -125,7 +129,9 @@ class ProfilingSession(object):
     def _after_exec(self, conn, clause, multiparams, params, results):
         """ SQLAlchemy event hook """
         # calculate the query time
-        duration = time.time() - conn._sqltap_query_start_time
+        end_time = time.time()
+        start_time = getattr(conn, '_sqltap_query_start_time', end_time)
+        duration = end_time - start_time
 
         # get the user's context
         context = (None if not self.user_context_fn else

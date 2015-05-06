@@ -3,6 +3,7 @@ from __future__ import print_function
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
+import sqlalchemy.event
 import nose.tools
 from werkzeug.test import Client
 from werkzeug.wrappers import BaseResponse
@@ -166,6 +167,23 @@ class TestSQLTap(object):
         assert 'sqltap profile report' in report
         assert sql in report
         profiler.stop()
+
+    def test_no_before_exec(self):
+        """
+        If SQLTap is started dynamically on one thread,
+        any SQLAlchemy sessions running on other threads start being profiled.
+        Their connections did not receive the before_execute event,
+        so when they receive the after_execute event, extra care must be taken.
+        """
+        profiler = sqltap.ProfilingSession(self.engine)
+        sqlalchemy.event.listen(self.engine, "after_execute", profiler._after_exec)
+        sess = self.Session()
+        q = sess.query(self.A)
+        q.all()
+        stats = profiler.collect()
+        assert len(stats) == 1
+        assert stats[0].duration == 0.0, str(stats[0].duration)
+        sqlalchemy.event.remove(self.engine, "after_execute", profiler._after_exec)
 
     def test_report_aggregation(self):
         """
