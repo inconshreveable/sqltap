@@ -40,6 +40,7 @@ class TestSQLTap(object):
 
         stats = profiler.collect()
         assert len(_startswith(stats, 'INSERT')) == 1
+        profiler.stop()
 
     def test_select(self):
         """ Simple test that sqltap collects a select query. """
@@ -50,6 +51,7 @@ class TestSQLTap(object):
 
         stats = profiler.collect()
         assert len(_startswith(stats, 'SELECT')) == 1
+        profiler.stop()
 
     def test_engine_scoped(self):
         """
@@ -76,6 +78,7 @@ class TestSQLTap(object):
 
         stats = _startswith(profiler.collect(), 'SELECT')
         assert len(stats) == 1
+        profiler.stop()
 
 
     def test_engine_global(self):
@@ -102,15 +105,19 @@ class TestSQLTap(object):
 
         stats = _startswith(profiler.collect(), 'SELECT')
         assert len(stats) == 2
+        profiler.stop()
 
-    @nose.tools.raises(AssertionError)
     def test_start_twice(self):
         """ Ensure that multiple calls to ProfilingSession.start() raises assertion
         error.
         """
         profiler = sqltap.ProfilingSession(self.engine)
         profiler.start()
-        profiler.start()
+        try:
+            profiler.start()
+        except AssertionError:
+            pass
+        profiler.stop()
 
     def test_stop(self):
         """ Ensure queries after you call ProfilingSession.stop() are not recorded. """
@@ -145,6 +152,7 @@ class TestSQLTap(object):
         report = sqltap.report(profiler.collect())
         assert 'sqltap profile report' in report
         assert qtext in report
+        profiler.stop()
 
     def test_report_raw_sql(self):
         """ Ensure that reporting works when raw SQL queries were emitted. """
@@ -157,6 +165,7 @@ class TestSQLTap(object):
         report = sqltap.report(profiler.collect())
         assert 'sqltap profile report' in report
         assert sql in report
+        profiler.stop()
 
     def test_report_aggregation(self):
         """
@@ -180,6 +189,7 @@ class TestSQLTap(object):
         print(report)
         assert '2 unique' in report
         assert '<dd>10</dd>' in report
+        profiler.stop()
 
     def test_start_stop(self):
         sess = self.Session()
@@ -246,6 +256,7 @@ class TestSQLTap(object):
 
         ctxs = [qstats.user_context for qstats in _startswith(stats, 'SELECT')]
         assert ctxs[0] == 1
+        profiler.stop()
 
     def test_context_fn_isolation(self):
         x = { "i": 0 }
@@ -266,10 +277,12 @@ class TestSQLTap(object):
         ctxs = [qstats.user_context for qstats in _startswith(stats, 'SELECT')]
         assert ctxs.count(1) == 1
         assert ctxs.count(2) == 1
+        profiler.stop()
 
     def test_collect_empty(self):
         profiler = sqltap.start(self.engine)
         assert len(profiler.collect()) == 0
+        profiler.stop()
 
     def test_collect_fn(self):
         collection = []
@@ -285,12 +298,14 @@ class TestSQLTap(object):
         sess.query(self.A).all()
 
         assert len(collection) == 2
+        profiler.stop()
 
     @nose.tools.raises(AssertionError)
     def test_collect_fn_execption_on_collect(self):
         def noop(): pass
         profiler = sqltap.start(self.engine, collect_fn=noop)
         profiler.collect()
+        profiler.stop()
 
     def test_report_escaped(self):
         """ Test that . """
@@ -312,6 +327,7 @@ class TestSQLTap(object):
         report = sqltap.report(profiler.collect())
         assert "<blockquote class='test'>" not in report
         assert "&#34;&lt;blockquote class=&#39;test&#39;&gt;&#34;" in report
+        profiler.stop()
 
 
 class TestSQLTapMiddleware(TestSQLTap):
