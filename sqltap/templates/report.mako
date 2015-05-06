@@ -13,7 +13,7 @@
     <link href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- syntax highlighting -->
-    <link rel="stylesheet" href="http://yandex.st/highlightjs/8.0/styles/default.min.css">
+    <link href="http://yandex.st/highlightjs/8.0/styles/default.min.css" rel="stylesheet">
     <script src="http://yandex.st/highlightjs/8.0/highlight.min.js"></script>
     <style type="text/css">
       body { padding-top: 60px; }
@@ -154,6 +154,9 @@ ${group.first_word}
                   % endfor
               </ul>
             </div>
+
+            <!-- ================================================== -->
+
             % endfor
           </div>
         </div>
