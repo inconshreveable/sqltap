@@ -12,6 +12,7 @@ except ImportError:
 
 from werkzeug.wrappers import Response
 
+
 class SQLTapMiddleware(object):
     """ SQLTap dashboard middleware for WSGI applications.
 
@@ -53,7 +54,8 @@ class SQLTapMiddleware(object):
     def render(self, environ, start_response):
         verb = environ.get('REQUEST_METHOD', 'GET').strip().upper()
         if verb not in ('GET', 'POST'):
-            response = Response('405 Method Not Allowed', status=405, mimetype='text/plain')
+            response = Response('405 Method Not Allowed', status=405,
+                                mimetype='text/plain')
             response.headers['Allow'] = 'GET, POST'
             return response(environ, start_response)
 
@@ -72,7 +74,8 @@ class SQLTapMiddleware(object):
 
             turn = body.get('turn', ' ')[0].strip().lower()
             if turn not in ('on', 'off'):
-                response = Response('400 Bad Request: parameter "turn=(on|off)" required',
+                response = Response('400 Bad Request: parameter '
+                                    '"turn=(on|off)" required',
                                     status='400', mimetype='text/plain')
                 return response(environ, start_response)
             if turn == 'on':

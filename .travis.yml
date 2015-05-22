@@ -1,0 +1,16 @@
+language: python
+python:
+  - "2.6"
+  - "2.7"
+  - "3.3"
+  - "3.4"
+install:
+  - python setup.py develop
+  - pip install flake8
+script:
+  - flake8 --ignore=H302,H306,H402,H404,H405,H904,E126,E128,C901
+           --show-source
+           --builtins=_
+           --max-line-length=79
+           --exclude=.venv,.git,.tox,dist,doc,.eggs,*.egg-info
+  - python setup.py test

@@ -9,11 +9,12 @@ try:
     import queue
 except ImportError:
     import Queue as queue
-import string
+
 import mako.template
 import mako.lookup
 import sqlalchemy.engine
 import sqlalchemy.event
+
 
 class QueryStats(object):
     """ Statistics about a query
@@ -22,12 +23,12 @@ class QueryStats(object):
     a list of them as the result of a call to :func:`ProfilingSession.collect`
     You may wish to to inspect of filter them before passing them into
     :func:`sqltap.report`.
-    
+
     :attr text: The text of the query
     :attr stack: The stack trace when this query was issued. Formatted as
         returned by py:func:`traceback.extract_stack`
     :attr duration: Duration of the query in seconds.
-    :attr user_context: The value returned by the user_context_fn set 
+    :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
     def __init__(self, text, stack, duration, user_context):
@@ -41,8 +42,10 @@ class QueryStats(object):
         return "<%s text=%r params=%r duration=%f>" % (
             self.__class__.__name__, self.text, self.params, self.duration)
 
+
 class ProfilingSession(object):
-    """ A ProfilingSession captures queries run on an Engine and metadata about them.
+    """ A ProfilingSession captures queries run on an Engine and metadata about
+    them.
 
     The profiling session hooks into SQLAlchmey and captures query text,
     timing information, and backtraces of where those queries came from.
@@ -72,7 +75,7 @@ class ProfilingSession(object):
     within the context.
 
     Example usage::
-        
+
         profiler = ProfilingSession()
         with profiler:
             for number in Session.query(Numbers).filter(Numbers.value <= 3):
@@ -83,7 +86,7 @@ class ProfilingSession(object):
     function.
 
     Example usage::
-        
+
         profiler = ProfilingSession()
 
         @profiler
@@ -92,7 +95,8 @@ class ProfilingSession(object):
                 print number
     """
 
-    def __init__(self, engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None):
+    def __init__(self, engine=sqlalchemy.engine.Engine, user_context_fn=None,
+                 collect_fn=None):
         """ Create a new :class:`ProfilingSession` object
 
         :param engine: The sqlalchemy engine on which you want to
@@ -100,8 +104,8 @@ class ProfilingSession(object):
             which will profile queries across all engines.
 
         :param user_context_fn: A function which returns a value to be stored
-            with the query statistics. The function takes the same parameters 
-            passed to the after_execute event in sqlalchemy: 
+            with the query statistics. The function takes the same parameters
+            passed to the after_execute event in sqlalchemy:
             (conn, clause, multiparams, params, results)
 
         :param collect_fn: A function which accepts a :class:`QueryStats`
@@ -135,7 +139,8 @@ class ProfilingSession(object):
 
         # get the user's context
         context = (None if not self.user_context_fn else
-                   self.user_context_fn(conn, clause, multiparams, params, results))
+                   self.user_context_fn(conn, clause, multiparams, params,
+                                        results))
 
         try:
             text = clause.compile(dialect=conn.engine.dialect)
@@ -143,7 +148,8 @@ class ProfilingSession(object):
             text = clause
 
         # add the querystats to the collector
-        self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1], duration, context))
+        self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1],
+                                   duration, context))
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.
@@ -151,7 +157,8 @@ class ProfilingSession(object):
         session's constructor.
         """
         if not self.collector:
-            raise AssertionError("Can't call collect when you've registered your own collect_fn!")
+            raise AssertionError("Can't call collect when you've registered "
+                                 "your own collect_fn!")
 
         queries = []
         try:
@@ -165,27 +172,29 @@ class ProfilingSession(object):
     def start(self):
         """ Start profiling
 
-        :raises AssertionError: If calling this function when the session 
+        :raises AssertionError: If calling this function when the session
             is already started.
         """
-        if self.started == True:
+        if self.started is True:
             raise AssertionError("Profiling session is already started!")
 
         self.started = True
-        sqlalchemy.event.listen(self.engine, "before_execute", self._before_exec)
+        sqlalchemy.event.listen(self.engine, "before_execute",
+                                self._before_exec)
         sqlalchemy.event.listen(self.engine, "after_execute", self._after_exec)
 
     def stop(self):
         """ Stop profiling
 
-        :raises AssertionError: If calling this function when the session 
+        :raises AssertionError: If calling this function when the session
             is already stopped.
         """
-        if self.started == False:
+        if self.started is False:
             raise AssertionError("Profiling session is already stopped")
 
         self.started = False
-        sqlalchemy.event.remove(self.engine, "before_execute", self._before_exec)
+        sqlalchemy.event.remove(self.engine, "before_execute",
+                                self._before_exec)
         sqlalchemy.event.remove(self.engine, "after_execute", self._after_exec)
 
     def __enter__(self, *args, **kwargs):
@@ -203,7 +212,9 @@ class ProfilingSession(object):
                 return fn(*args, **kwargs)
         return decorated
 
-def start(engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None):
+
+def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
+          collect_fn=None):
     """ Create a new :class:`ProfilingSession` and call start on it.
 
     This is a convenience method. See :class:`ProfilingSession`'s
@@ -215,14 +226,15 @@ def start(engine=sqlalchemy.engine.Engine, user_context_fn=None, collect_fn=None
     session.start()
     return session
 
+
 def report(statistics, filename=None, template="report.mako", **kwargs):
     """ Generate an HTML report of query statistics.
-    
+
     :param statistics: An iterable of :class:`QueryStats` objects over
         which to prepare a report. This is typically a list returned by
         a call to :func:`collect`.
 
-    :param filename: If present, additionally write the html report out 
+    :param filename: If present, additionally write the html report out
         to a file at the specified path.
 
     :param template: The name of the file in the sqltap/templates
@@ -269,7 +281,8 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
             self.mean = self.sum / len(self.queries)
 
         def calc_median(self):
-            queries = sorted(self.queries, key=lambda q: q.duration, reverse=True)
+            queries = sorted(self.queries, key=lambda q: q.duration,
+                             reverse=True)
             length = len(queries)
             if not length % 2:
                 x1 = queries[length // 2].duration
@@ -284,13 +297,14 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
     # group together statistics for the same query
     for qstats in statistics:
         qstats.stack_text = \
-                ''.join(traceback.format_list(qstats.stack)).strip()
+            ''.join(traceback.format_list(qstats.stack)).strip()
 
         group = query_groups[str(qstats.text)]
         group.add(qstats)
         all_group.add(qstats)
 
-    query_groups = sorted(query_groups.values(), key=lambda g: g.sum, reverse=True)
+    query_groups = sorted(query_groups.values(), key=lambda g: g.sum,
+                          reverse=True)
 
     # calculate the median for each group
     for g in query_groups:
@@ -299,13 +313,15 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
     # create the template lookup
     # (we need this for extensions inheriting the base template)
     tmpl_dir = os.path.join(os.path.dirname(__file__), "templates")
-    lookup = mako.lookup.TemplateLookup(tmpl_dir, default_filters=['unicode', 'h']) # mako fixes unicode -> str on py3k
+    # mako fixes unicode -> str on py3k
+    lookup = mako.lookup.TemplateLookup(tmpl_dir,
+                                        default_filters=['unicode', 'h'])
 
     # render the template
     html = lookup.get_template(template).render(
-        query_groups = query_groups,
-        all_group = all_group,
-        name = "SQLTap Profiling Report",
+        query_groups=query_groups,
+        all_group=all_group,
+        name="SQLTap Profiling Report",
         **kwargs
     )
 
@@ -313,8 +329,9 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
     if filename:
         with open(filename, 'w') as f:
             f.write(html)
-        
+
     return html
+
 
 def _hotfix_dispatch_remove():
     """ The fix for this bug is in sqlalchemy 0.9.4, until then, we'll
