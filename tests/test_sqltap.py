@@ -13,7 +13,7 @@ import sqltap.wsgi
 
 
 def _startswith(qs, text):
-    return list(filter(lambda q: str(q.text).startswith(text), qs))
+    return list(filter(lambda q: str(q.text).strip().startswith(text), qs))
 
 
 class TestSQLTap(object):
@@ -175,6 +175,22 @@ class TestSQLTap(object):
         report = sqltap.report(profiler.collect())
         assert 'sqltap profile report' in report
         assert sql in report
+        profiler.stop()
+
+    def test_report_ddl(self):
+        """ Ensure that reporting works when DDL were emitted """
+        engine2 = create_engine('sqlite:///:memory:', echo=True)
+        Base2 = declarative_base(bind=engine2)
+
+        class B(Base2):
+            __tablename__ = "b"
+            id = Column("id", Integer, primary_key=True)
+
+        profiler = sqltap.start(engine2)
+        Base2.metadata.create_all(engine2)
+
+        report = sqltap.report(profiler.collect())
+        assert 'sqltap profile report' in report
         profiler.stop()
 
     def test_no_before_exec(self):

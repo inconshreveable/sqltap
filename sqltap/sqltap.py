@@ -38,6 +38,9 @@ class QueryStats(object):
         self.duration = duration
         self.user_context = user_context
 
+        if self.params is None:
+            self.params = {}
+
     def __repr__(self):
         return "<%s text=%r params=%r duration=%f>" % (
             self.__class__.__name__, self.text, self.params, self.duration)
