@@ -376,6 +376,10 @@ class TestSQLTap(object):
         assert "&#34;&lt;blockquote class=&#39;test&#39;&gt;&#34;" in report
         profiler.stop()
 
+    def test_context_return_self(self):
+        with sqltap.ProfilingSession() as profiler:
+            assert type(profiler) is sqltap.ProfilingSession
+
 
 class TestSQLTapMiddleware(TestSQLTap):
 

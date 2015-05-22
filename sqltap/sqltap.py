@@ -203,6 +203,7 @@ class ProfilingSession(object):
     def __enter__(self, *args, **kwargs):
         """ context manager """
         self.start()
+        return self
 
     def __exit__(self, *args, **kwargs):
         """ context manager """
