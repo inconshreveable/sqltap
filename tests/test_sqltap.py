@@ -1,7 +1,7 @@
 from __future__ import print_function
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import *  # noqa
+from sqlalchemy.orm import *  # noqa
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy.event
 import nose.tools
@@ -15,16 +15,17 @@ import sqltap.wsgi
 def _startswith(qs, text):
     return list(filter(lambda q: str(q.text).startswith(text), qs))
 
+
 class TestSQLTap(object):
 
     def setUp(self):
         self.engine = create_engine('sqlite:///:memory:', echo=True)
 
-        Base = declarative_base(bind = self.engine)
+        Base = declarative_base(bind=self.engine)
 
         class A(Base):
             __tablename__ = "a"
-            id = Column("id", Integer, primary_key = True)
+            id = Column("id", Integer, primary_key=True)
         self.A = A
 
         Base.metadata.create_all(self.engine)
@@ -61,11 +62,11 @@ class TestSQLTap(object):
         """
         engine2 = create_engine('sqlite:///:memory:', echo=True)
 
-        Base = declarative_base(bind = engine2)
+        Base = declarative_base(bind=engine2)
 
         class B(Base):
             __tablename__ = "b"
-            id = Column("id", Integer, primary_key = True)
+            id = Column("id", Integer, primary_key=True)
 
         Base.metadata.create_all(engine2)
         Session = sessionmaker(bind=engine2)
@@ -81,18 +82,18 @@ class TestSQLTap(object):
         assert len(stats) == 1
         profiler.stop()
 
-
     def test_engine_global(self):
-        """ Test that registering globally for all queries correctly pulls queries
-            from multiple engines.
+        """
+        Test that registering globally for all queries correctly pulls queries
+        from multiple engines.
         """
         engine2 = create_engine('sqlite:///:memory:', echo=True)
 
-        Base = declarative_base(bind = engine2)
+        Base = declarative_base(bind=engine2)
 
         class B(Base):
             __tablename__ = "b"
-            id = Column("id", Integer, primary_key = True)
+            id = Column("id", Integer, primary_key=True)
 
         Base.metadata.create_all(engine2)
         Session = sessionmaker(bind=engine2)
@@ -109,7 +110,8 @@ class TestSQLTap(object):
         profiler.stop()
 
     def test_start_twice(self):
-        """ Ensure that multiple calls to ProfilingSession.start() raises assertion
+        """
+        Ensure that multiple calls to ProfilingSession.start() raises assertion
         error.
         """
         profiler = sqltap.ProfilingSession(self.engine)
@@ -124,7 +126,9 @@ class TestSQLTap(object):
         profiler.stop()
 
     def test_stop(self):
-        """ Ensure queries after you call ProfilingSession.stop() are not recorded. """
+        """
+        Ensure queries after you call ProfilingSession.stop() are not recorded.
+        """
         profiler = sqltap.start(self.engine)
         sess = self.Session()
         sess.query(self.A).all()
@@ -134,8 +138,10 @@ class TestSQLTap(object):
         assert len(profiler.collect()) == 1
 
     def test_stop_global(self):
-        """ Ensure queries after you call ProfilingSession.stop() are not recorded
-            when passing in the 'global' Engine object to record queries across all engines.
+        """
+        Ensure queries after you call ProfilingSession.stop() are not recorded
+        when passing in the 'global' Engine object to record queries across all
+        engines.
         """
         profiler = sqltap.start()
         sess = self.Session()
@@ -179,14 +185,16 @@ class TestSQLTap(object):
         so when they receive the after_execute event, extra care must be taken.
         """
         profiler = sqltap.ProfilingSession(self.engine)
-        sqlalchemy.event.listen(self.engine, "after_execute", profiler._after_exec)
+        sqlalchemy.event.listen(self.engine, "after_execute",
+                                profiler._after_exec)
         sess = self.Session()
         q = sess.query(self.A)
         q.all()
         stats = profiler.collect()
         assert len(stats) == 1
         assert stats[0].duration == 0.0, str(stats[0].duration)
-        sqlalchemy.event.remove(self.engine, "after_execute", profiler._after_exec)
+        sqlalchemy.event.remove(self.engine, "after_execute",
+                                profiler._after_exec)
 
     def test_report_aggregation(self):
         """
@@ -266,7 +274,6 @@ class TestSQLTap(object):
         stats = profiled.collect()
         assert len(_startswith(stats, 'SELECT')) == 1
 
-
     def test_context_fn(self):
         profiler = sqltap.start(self.engine, lambda *args: 1)
 
@@ -280,7 +287,8 @@ class TestSQLTap(object):
         profiler.stop()
 
     def test_context_fn_isolation(self):
-        x = { "i": 0 }
+        x = {"i": 0}
+
         def context_fn(*args):
             x['i'] += 1
             return x['i']
@@ -307,6 +315,7 @@ class TestSQLTap(object):
 
     def test_collect_fn(self):
         collection = []
+
         def my_collector(q):
             collection.append(q)
 
@@ -323,7 +332,8 @@ class TestSQLTap(object):
 
     @nose.tools.raises(AssertionError)
     def test_collect_fn_execption_on_collect(self):
-        def noop(): pass
+        def noop():
+            pass
         profiler = sqltap.start(self.engine, collect_fn=noop)
         profiler.collect()
         profiler.stop()
@@ -332,11 +342,11 @@ class TestSQLTap(object):
         """ Test that . """
         engine2 = create_engine('sqlite:///:memory:', echo=True)
 
-        Base = declarative_base(bind = engine2)
+        Base = declarative_base(bind=engine2)
 
         class B(Base):
             __tablename__ = "b"
-            id = Column("id", Unicode, primary_key = True)
+            id = Column("id", Unicode, primary_key=True)
 
         Base.metadata.create_all(engine2)
         Session = sessionmaker(bind=engine2)
@@ -360,7 +370,9 @@ class TestSQLTapMiddleware(TestSQLTap):
         self.client = Client(self.app, BaseResponse)
 
     def test_can_construct_wsgi_wrapper(self):
-        """Only verifies that the imports and __init__ work, not a real Test."""
+        """
+        Only verifies that the imports and __init__ work, not a real Test.
+        """
         sqltap.wsgi.SQLTapMiddleware(self.app)
 
     def test_wsgi_get_request(self):
