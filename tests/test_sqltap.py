@@ -355,7 +355,7 @@ class TestSQLTap(object):
         profiler.stop()
 
     def test_report_escaped(self):
-        """ Test that . """
+        """ Test that string escaped correctly. """
         engine2 = create_engine('sqlite:///:memory:', echo=True)
 
         Base = declarative_base(bind=engine2)
