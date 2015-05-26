@@ -217,6 +217,55 @@ class ProfilingSession(object):
         return decorated
 
 
+class QueryGroup(object):
+    """ A QueryGroup stores profiling statistics data on a set of similar
+    queries, including their query text/time/count, backtrace stacks.
+    """
+
+    def __init__(self):
+        self.queries = []
+        self.stacks = collections.defaultdict(int)
+        self.callers = {}
+        self.max = 0
+        self.min = sys.maxsize
+        self.sum = 0
+        self.mean = 0
+        self.median = 0
+
+    def find_user_fn(self, stack):
+        """ rough heuristic to try to figure out what user-defined func
+            in the call stack (i.e. not sqlalchemy) issued the query
+        """
+        for frame in reversed(stack):
+            # frame[0] is the file path to the module
+            if 'sqlalchemy' not in frame[0]:
+                return frame
+
+    def add(self, q):
+        if not bool(self.queries):
+            self.text = str(q.text)
+            self.first_word = self.text.split()[0]
+        self.queries.append(q)
+        self.stacks[q.stack_text] += 1
+        self.callers[q.stack_text] = self.find_user_fn(q.stack)
+
+        self.max = max(self.max, q.duration)
+        self.min = min(self.min, q.duration)
+        self.sum = self.sum + q.duration
+        self.mean = self.sum / len(self.queries)
+
+    def calc_median(self):
+        queries = sorted(self.queries, key=lambda q: q.duration,
+                         reverse=True)
+        length = len(queries)
+        if not length % 2:
+            x1 = queries[length // 2].duration
+            x2 = queries[length // 2 - 1].duration
+            self.median = (x1 + x2) / 2
+        else:
+            self.median = queries[length // 2].duration
+
+
 def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
           collect_fn=None):
     """ Create a new :class:`ProfilingSession` and call start on it.
@@ -250,50 +299,6 @@ def report(statistics, filename=None, template="report.mako", **kwargs):
 
     :return: The generated HTML report.
     """
-
-    class QueryGroup:
-        def __init__(self):
-            self.queries = []
-            self.stacks = collections.defaultdict(int)
-            self.callers = {}
-            self.max = 0
-            self.min = sys.maxsize
-            self.sum = 0
-            self.mean = 0
-            self.median = 0
-
-        def find_user_fn(self, stack):
-            """ rough heuristic to try to figure out what user-defined func
-                in the call stack (i.e. not sqlalchemy) issued the query
-            """
-            for frame in reversed(stack):
-                # frame[0] is the file path to the module
-                if 'sqlalchemy' not in frame[0]:
-                    return frame
-
-        def add(self, q):
-            if not bool(self.queries):
-                self.text = str(q.text)
-                self.first_word = self.text.split()[0]
-            self.queries.append(q)
-            self.stacks[q.stack_text] += 1
-            self.callers[q.stack_text] = self.find_user_fn(q.stack)
-
-            self.max = max(self.max, q.duration)
-            self.min = min(self.min, q.duration)
-            self.sum = self.sum + q.duration
-            self.mean = self.sum / len(self.queries)
-
-        def calc_median(self):
-            queries = sorted(self.queries, key=lambda q: q.duration,
-                             reverse=True)
-            length = len(queries)
-            if not length % 2:
-                x1 = queries[length // 2].duration
-                x2 = queries[length // 2 - 1].duration
-                self.median = (x1 + x2) / 2
-            else:
-                self.median = queries[length // 2].duration
 
     query_groups = collections.defaultdict(QueryGroup)
     all_group = QueryGroup()
