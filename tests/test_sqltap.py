@@ -4,6 +4,7 @@ from sqlalchemy import *  # noqa
 from sqlalchemy.orm import *  # noqa
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy.event
+import sqlparse
 import nose.tools
 from werkzeug.test import Client
 from werkzeug.wrappers import BaseResponse
@@ -162,9 +163,13 @@ class TestSQLTap(object):
         qtext = str(q)
         q.all()
 
-        report = sqltap.report(profiler.collect())
+        stats = profiler.collect()
+        report = sqltap.report(stats, report_format="html")
         assert REPORT_TITLE in report
         assert qtext in report
+        report = sqltap.report(stats, report_format="text")
+        assert REPORT_TITLE in report
+        assert sqlparse.format(qtext, reindent=True) in report
         profiler.stop()
 
     def test_report_raw_sql(self):
@@ -175,9 +180,13 @@ class TestSQLTap(object):
         sql = 'SELECT * FROM %s' % self.A.__tablename__
         sess.connection().execute(sql)
 
-        report = sqltap.report(profiler.collect())
+        stats = profiler.collect()
+        report = sqltap.report(stats, report_format="html")
         assert REPORT_TITLE in report
         assert sql in report
+        report = sqltap.report(stats, report_format="text")
+        assert REPORT_TITLE in report
+        assert sqlparse.format(sql, reindent=True) in report
         profiler.stop()
 
     def test_report_ddl(self):
@@ -192,7 +201,10 @@ class TestSQLTap(object):
         profiler = sqltap.start(engine2)
         Base2.metadata.create_all(engine2)
 
-        report = sqltap.report(profiler.collect())
+        stats = profiler.collect()
+        report = sqltap.report(stats, report_format="html")
+        assert REPORT_TITLE in report
+        report = sqltap.report(stats, report_format="text")
         assert REPORT_TITLE in report
         profiler.stop()
 

@@ -30,7 +30,8 @@ setup(
     install_requires=[
         "SQLAlchemy >= 0.9",
         "Mako >= 0.4.1",
-        "Werkzeug >= 0.9.6"
+        "Werkzeug >= 0.9.6",
+        "sqlparse >= 0.1.15"
     ],
     tests_require=[
         "nose"

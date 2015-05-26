@@ -20,6 +20,7 @@ import sqlalchemy.event
 
 REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
+REPORT_TEXT = "text"
 
 
 class QueryStats(object):
@@ -401,6 +402,29 @@ class WSGIReporter(HTMLReporter):
             **kwargs)
 
 
+class TextReporter(Reporter):
+    """ A SQLTap Reporter that generates text format reports """
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file="text.mako", template_dir=None, **kwargs):
+        super(TextReporter, self).__init__(
+            stats,
+            report_file=report_file,
+            report_dir=report_dir,
+            template_file=template_file,
+            template_dir=template_dir,
+            **kwargs)
+
+        self._init_template(template_filters=['unicode'])
+
+    def render(self):
+        return super(TextReporter, self).render(
+            ex_handler=mako.exceptions.text_error_template)
+
+    def report(self):
+        return super(TextReporter, self).report(log_mode='a')
+
+
 def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
           collect_fn=None):
     """ Create a new :class:`ProfilingSession` and call start on it.
@@ -433,10 +457,11 @@ def report(statistics, filename=None, template="html.mako", **kwargs):
     :param report_format: (Optional) Choose the format for SQLTap report,
         candidates are ["html", "wsgi"]
 
-    :return: The generated HTML report.
+    :return: The generated SQLTap Report.
     """
     REPORTER_MAPPING = {REPORT_HTML: HTMLReporter,
-                        REPORT_WSGI: WSGIReporter}
+                        REPORT_WSGI: WSGIReporter,
+                        REPORT_TEXT: TextReporter}
 
     report_format = kwargs.get('report_format')
     if report_format:
