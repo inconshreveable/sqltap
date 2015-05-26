@@ -1,5 +1,6 @@
 from __future__ import division
 
+import datetime
 import time
 import traceback
 import collections
@@ -10,10 +11,15 @@ try:
 except ImportError:
     import Queue as queue
 
+import mako.exceptions
 import mako.template
 import mako.lookup
 import sqlalchemy.engine
 import sqlalchemy.event
+
+
+REPORT_HTML = "html"
+REPORT_WSGI = "wsgi"
 
 
 class QueryStats(object):
@@ -266,6 +272,135 @@ class QueryGroup(object):
             self.median = queries[length // 2].duration
 
 
+class Reporter(object):
+    """ An SQLTap Reporter base class """
+
+    REPORT_TITLE = "SQLTap Profiling Report"
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file=None, template_dir=None, **kwargs):
+        """ Create a new :class:`Reporter` object
+
+        :param stats: An iterable of :class:`QueryStats` objects over
+            which to prepare a report. This is typically a list returned by
+            a call to :func:`collect`.
+
+        :param report_file: If present, additionally write the SQLTap report
+            out to a file at the specified file.
+
+        :param report_dir: If present, additionally write the SQLTap report
+            out to a file under the specified folder.
+
+        :param template_file: filename of the template to generate the report.
+
+        :param template_dir: folder of the template to generate the report.
+        """
+        self.stats = stats
+        self.report_file = report_file
+        self.report_dir = report_dir
+        self.template_file = template_file
+        self.template_dir = template_dir
+        self.kwargs = kwargs
+
+        self._process_stats()
+
+    def render(self, ex_handler=mako.exceptions.html_error_template):
+        current_time = str(datetime.datetime.now())
+        try:
+            result = self.template.render(
+                query_groups=self._query_groups,
+                all_group=self._all_group,
+                report_title=self.REPORT_TITLE,
+                report_time=current_time,
+                **self.kwargs)
+        except Exception:
+            return ex_handler().render()
+        return result
+
+    def report(self, log_mode='w'):
+        content = self.render()
+
+        if self.report_file:
+            report_file = os.path.join(self.report_dir, self.report_file)
+            with open(report_file, log_mode) as f:
+                f.write(content)
+
+        return content
+
+    def _init_template(self, template_filters=['unicode', 'h']):
+        # create the template lookup
+        if self.template_file is None:
+            raise Exception("SQLTap Report template file not specified!")
+
+        # (we need this for extensions inheriting the base template)
+        if self.template_dir is None:
+            self.template_dir = os.path.join(os.path.dirname(__file__),
+                                             "templates")
+
+        # mako fixes unicode -> str on py3k
+        lookup = mako.lookup.TemplateLookup(self.template_dir,
+                                            default_filters=template_filters)
+        self.template = lookup.get_template(self.template_file)
+
+    def _process_stats(self):
+        """ Process query statistics
+
+        Generate sorted :class:`QueryGroup` in :param:self._query_groups and
+        all-in-one :class:`QueryGroup` in :param:self._all_group
+        """
+        query_groups = collections.defaultdict(QueryGroup)
+        all_group = QueryGroup()
+
+        # group together statistics for the same query
+        for qstats in self.stats:
+            qstats.stack_text = \
+                ''.join(traceback.format_list(qstats.stack)).strip()
+
+            group = query_groups[str(qstats.text)]
+            group.add(qstats)
+            all_group.add(qstats)
+
+        query_groups = sorted(query_groups.values(), key=lambda g: g.sum,
+                              reverse=True)
+
+        # calculate the median for each group
+        for g in query_groups:
+            g.calc_median()
+
+        self._query_groups = query_groups
+        self._all_group = all_group
+
+
+class HTMLReporter(Reporter):
+    """ A SQLTap Reporter that generates HTML format reports """
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file="html.mako", template_dir=None, **kwargs):
+        super(HTMLReporter, self).__init__(
+            stats,
+            report_file=report_file,
+            report_dir=report_dir,
+            template_file=template_file,
+            template_dir=template_dir,
+            **kwargs)
+
+        self._init_template(template_filters=['unicode', 'h'])
+
+
+class WSGIReporter(HTMLReporter):
+    """ A SQLTap Reporter that generates WSGI format reports """
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file="wsgi.mako", template_dir=None, **kwargs):
+        super(WSGIReporter, self).__init__(
+            stats,
+            report_file=report_file,
+            report_dir=report_dir,
+            template_file=template_file,
+            template_dir=template_dir,
+            **kwargs)
+
+
 def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
           collect_fn=None):
     """ Create a new :class:`ProfilingSession` and call start on it.
@@ -280,66 +415,45 @@ def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
     return session
 
 
-def report(statistics, filename=None, template="report.mako", **kwargs):
+def report(statistics, filename=None, template="html.mako", **kwargs):
     """ Generate an HTML report of query statistics.
 
     :param statistics: An iterable of :class:`QueryStats` objects over
         which to prepare a report. This is typically a list returned by
         a call to :func:`collect`.
 
-    :param filename: If present, additionally write the html report out
-        to a file at the specified path.
+    :param filename: If present, additionally write the report out to a file at
+        the specified path.
 
-    :param template: The name of the file in the sqltap/templates
-        directory to render for the report. This is mostly intended for
-        extensions to sqltap (like the wsgi extension).
+    :param template: The name of the file in the sqltap/templates directory to
+        render for the report. This is mostly intended for extensions to sqltap
+        (like the wsgi extension). Not working when :param:`report_format`
+        specified.
 
-    :param kwargs: Additional keyword arguments to be passed to the
-        template. Intended for extensions.
+    :param report_format: (Optional) Choose the format for SQLTap report,
+        candidates are ["html", "wsgi"]
 
     :return: The generated HTML report.
     """
+    REPORTER_MAPPING = {REPORT_HTML: HTMLReporter,
+                        REPORT_WSGI: WSGIReporter}
 
-    query_groups = collections.defaultdict(QueryGroup)
-    all_group = QueryGroup()
+    report_format = kwargs.get('report_format')
+    if report_format:
+        report_format = report_format.lower()
 
-    # group together statistics for the same query
-    for qstats in statistics:
-        qstats.stack_text = \
-            ''.join(traceback.format_list(qstats.stack)).strip()
+        if report_format not in REPORTER_MAPPING.keys():
+            raise Exception("Format |%s| is not valid! formats supported: %s ",
+                            (report_format, REPORTER_MAPPING.keys()))
 
-        group = query_groups[str(qstats.text)]
-        group.add(qstats)
-        all_group.add(qstats)
+        reporter = REPORTER_MAPPING[report_format](
+            statistics, report_file=filename, **kwargs)
+    else:
+        reporter = HTMLReporter(
+            statistics, report_file=filename, template_file=template, **kwargs)
 
-    query_groups = sorted(query_groups.values(), key=lambda g: g.sum,
-                          reverse=True)
-
-    # calculate the median for each group
-    for g in query_groups:
-        g.calc_median()
-
-    # create the template lookup
-    # (we need this for extensions inheriting the base template)
-    tmpl_dir = os.path.join(os.path.dirname(__file__), "templates")
-    # mako fixes unicode -> str on py3k
-    lookup = mako.lookup.TemplateLookup(tmpl_dir,
-                                        default_filters=['unicode', 'h'])
-
-    # render the template
-    html = lookup.get_template(template).render(
-        query_groups=query_groups,
-        all_group=all_group,
-        name="SQLTap Profiling Report",
-        **kwargs
-    )
-
-    # write it out to a file if you asked for it
-    if filename:
-        with open(filename, 'w') as f:
-            f.write(html)
-
-    return html
+    result = reporter.report()
+    return result
 
 
 def _hotfix_dispatch_remove():

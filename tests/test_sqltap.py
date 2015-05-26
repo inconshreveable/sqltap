@@ -12,6 +12,9 @@ import sqltap
 import sqltap.wsgi
 
 
+REPORT_TITLE = "SQLTap Profiling Report"
+
+
 def _startswith(qs, text):
     return list(filter(lambda q: str(q.text).strip().startswith(text), qs))
 
@@ -160,7 +163,7 @@ class TestSQLTap(object):
         q.all()
 
         report = sqltap.report(profiler.collect())
-        assert 'sqltap profile report' in report
+        assert REPORT_TITLE in report
         assert qtext in report
         profiler.stop()
 
@@ -173,7 +176,7 @@ class TestSQLTap(object):
         sess.connection().execute(sql)
 
         report = sqltap.report(profiler.collect())
-        assert 'sqltap profile report' in report
+        assert REPORT_TITLE in report
         assert sql in report
         profiler.stop()
 
@@ -190,7 +193,7 @@ class TestSQLTap(object):
         Base2.metadata.create_all(engine2)
 
         report = sqltap.report(profiler.collect())
-        assert 'sqltap profile report' in report
+        assert REPORT_TITLE in report
         profiler.stop()
 
     def test_no_before_exec(self):

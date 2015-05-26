@@ -92,6 +92,6 @@ class SQLTapMiddleware(object):
         return self.render_response(environ, start_response)
 
     def render_response(self, environ, start_response):
-        html = sqltap.report(self.stats, middleware=self, template="wsgi.mako")
+        html = sqltap.report(self.stats, middleware=self, report_format="wsgi")
         response = Response(html.encode('utf-8'), mimetype="text/html")
         return response(environ, start_response)
