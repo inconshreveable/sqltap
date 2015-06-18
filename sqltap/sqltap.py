@@ -455,7 +455,7 @@ def report(statistics, filename=None, template="html.mako", **kwargs):
         specified.
 
     :param report_format: (Optional) Choose the format for SQLTap report,
-        candidates are ["html", "wsgi"]
+        candidates are ["html", "wsgi", "text"]
 
     :return: The generated SQLTap Report.
     """
