@@ -148,7 +148,8 @@ constructor for documentation on the arguments.</p>
 <dl class="class">
 <dt id="sqltap.ProfilingSession">
 <em class="property">class </em><tt class="descclassname">sqltap.</tt><tt class="descname">ProfilingSession</tt><big>(</big><em>engine=&lt;class 'sqlalchemy.engine.base.Engine'&gt;</em>, <em>user_context_fn=None</em>, <em>collect_fn=None</em><big>)</big><a class="headerlink" href="#sqltap.ProfilingSession" title="Permalink to this definition">¶</a></dt>
-<dd><p>A ProfilingSession captures queries run on an Engine and metadata about them.</p>
+<dd><p>A ProfilingSession captures queries run on an Engine and metadata about
+them.</p>
 <p>The profiling session hooks into SQLAlchmey and captures query text,
 timing information, and backtraces of where those queries came from.</p>
 <p>You may have multiple profiling sessions active at the same time on
@@ -206,7 +207,7 @@ session&#8217;s constructor.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name" colspan="2">Raises AssertionError:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If calling this function when the session 
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If calling this function when the session
 is already started.</td>
 </tr>
 </tbody>
@@ -222,7 +223,7 @@ is already started.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name" colspan="2">Raises AssertionError:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If calling this function when the session 
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">If calling this function when the session
 is already stopped.</td>
 </tr>
 </tbody>
@@ -233,7 +234,7 @@ is already stopped.</td>
 
 <dl class="function">
 <dt id="sqltap.report">
-<tt class="descclassname">sqltap.</tt><tt class="descname">report</tt><big>(</big><em>statistics</em>, <em>filename=None</em>, <em>template='report.mako'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#sqltap.report" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">sqltap.</tt><tt class="descname">report</tt><big>(</big><em>statistics</em>, <em>filename=None</em>, <em>template='html.mako'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#sqltap.report" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate an HTML report of query statistics.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -243,17 +244,18 @@ is already stopped.</td>
 <li><strong>statistics</strong> &#8211; An iterable of <a class="reference internal" href="#sqltap.QueryStats" title="sqltap.QueryStats"><tt class="xref py py-class docutils literal"><span class="pre">QueryStats</span></tt></a> objects over
 which to prepare a report. This is typically a list returned by
 a call to <tt class="xref py py-func docutils literal"><span class="pre">collect()</span></tt>.</li>
-<li><strong>filename</strong> &#8211; If present, additionally write the html report out 
-to a file at the specified path.</li>
-<li><strong>template</strong> &#8211; The name of the file in the sqltap/templates
-directory to render for the report. This is mostly intended for
-extensions to sqltap (like the wsgi extension).</li>
-<li><strong>kwargs</strong> &#8211; Additional keyword arguments to be passed to the
-template. Intended for extensions.</li>
+<li><strong>filename</strong> &#8211; If present, additionally write the report out to a file at
+the specified path.</li>
+<li><strong>template</strong> &#8211; The name of the file in the sqltap/templates directory to
+render for the report. This is mostly intended for extensions to sqltap
+(like the wsgi extension). Not working when <a href="#id1"><span class="problematic" id="id2">:param:`report_format`</span></a>
+specified.</li>
+<li><strong>report_format</strong> &#8211; (Optional) Choose the format for SQLTap report,
+candidates are [&#8220;html&#8221;, &#8220;wsgi&#8221;, &#8220;text&#8221;]</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The generated HTML report.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The generated SQLTap Report.</p>
 </td>
 </tr>
 </tbody>
@@ -280,7 +282,7 @@ returned by py:func:<cite>traceback.extract_stack</cite></td>
 <tr class="field-odd field"><th class="field-name">Attr duration:</th><td class="field-body">Duration of the query in seconds.</td>
 </tr>
 <tr class="field-even field"><th class="field-name" colspan="2">Attr user_context:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body">The value returned by the user_context_fn set 
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">The value returned by the user_context_fn set
 with <a class="reference internal" href="#sqltap.start" title="sqltap.start"><tt class="xref py py-func docutils literal"><span class="pre">sqltap.start()</span></tt></a>.</td>
 </tr>
 </tbody>
@@ -335,7 +337,7 @@ path prefix can be set by <tt class="docutils literal"><span class="pre">path</s
       </ul>
     </div>
     <div class="footer">
-        &copy; Copyright 2014, inconshreveable.
+        &copy; Copyright 2015, inconshreveable.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
     </div>
   </body>

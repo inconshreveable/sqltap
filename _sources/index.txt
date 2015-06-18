@@ -5,7 +5,7 @@ SQLTap - profiling and introspection for SQLAlchemy applications
 ================================================================
 
 
-.. image:: images/sqltap-report-example.png
+.. image:: _images/sqltap-report-example.png
     :align: center
     :height: 500px
 
