@@ -1,4 +1,4 @@
-<%inherit file="report.mako" />
+<%inherit file="html.mako" />
 
 <%block name="header_extra">
 <form class="navbar-left inline-form navbar-form" action="${middleware.path}" method="POST">

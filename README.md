@@ -40,6 +40,19 @@ For example, to integrate with a Flask application:
 
     app.wsgi_app = sqltap.wsgi.SQLTapMiddleware(app.wsgi_app)
 
+## Text report
+
+Sometimes we want to profile sqlalchemy on remote servers. It's very
+inconvenient to view HTML format SQLTap report on these servers. Alternatively,
+SQLTap provides text profiling report in a human-readable way.
+
+    import sqltap
+
+    profiler = sqltap.start()
+    session.query(Knights).filter_by(who_say = 'Ni').all()
+    statistics = profiler.collect()
+    sqltap.report(statistics, "report.txt", report_format="text")
+
 ## Advanced Example
 
     import sqltap
@@ -82,7 +95,7 @@ For example, to integrate with a Flask application:
 ## Testing
 Run the sqltap tests:
 
-    nosetests tests/
+    python setup.py test
 
 ## License
 Apache

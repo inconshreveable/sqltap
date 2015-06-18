@@ -4,6 +4,7 @@ from sqlalchemy import *  # noqa
 from sqlalchemy.orm import *  # noqa
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy.event
+import sqlparse
 import nose.tools
 from werkzeug.test import Client
 from werkzeug.wrappers import BaseResponse
@@ -12,8 +13,11 @@ import sqltap
 import sqltap.wsgi
 
 
+REPORT_TITLE = "SQLTap Profiling Report"
+
+
 def _startswith(qs, text):
-    return list(filter(lambda q: str(q.text).startswith(text), qs))
+    return list(filter(lambda q: str(q.text).strip().startswith(text), qs))
 
 
 class TestSQLTap(object):
@@ -159,9 +163,13 @@ class TestSQLTap(object):
         qtext = str(q)
         q.all()
 
-        report = sqltap.report(profiler.collect())
-        assert 'sqltap profile report' in report
+        stats = profiler.collect()
+        report = sqltap.report(stats, report_format="html")
+        assert REPORT_TITLE in report
         assert qtext in report
+        report = sqltap.report(stats, report_format="text")
+        assert REPORT_TITLE in report
+        assert sqlparse.format(qtext, reindent=True) in report
         profiler.stop()
 
     def test_report_raw_sql(self):
@@ -172,9 +180,32 @@ class TestSQLTap(object):
         sql = 'SELECT * FROM %s' % self.A.__tablename__
         sess.connection().execute(sql)
 
-        report = sqltap.report(profiler.collect())
-        assert 'sqltap profile report' in report
+        stats = profiler.collect()
+        report = sqltap.report(stats, report_format="html")
+        assert REPORT_TITLE in report
         assert sql in report
+        report = sqltap.report(stats, report_format="text")
+        assert REPORT_TITLE in report
+        assert sqlparse.format(sql, reindent=True) in report
+        profiler.stop()
+
+    def test_report_ddl(self):
+        """ Ensure that reporting works when DDL were emitted """
+        engine2 = create_engine('sqlite:///:memory:', echo=True)
+        Base2 = declarative_base(bind=engine2)
+
+        class B(Base2):
+            __tablename__ = "b"
+            id = Column("id", Integer, primary_key=True)
+
+        profiler = sqltap.start(engine2)
+        Base2.metadata.create_all(engine2)
+
+        stats = profiler.collect()
+        report = sqltap.report(stats, report_format="html")
+        assert REPORT_TITLE in report
+        report = sqltap.report(stats, report_format="text")
+        assert REPORT_TITLE in report
         profiler.stop()
 
     def test_no_before_exec(self):
@@ -339,7 +370,7 @@ class TestSQLTap(object):
         profiler.stop()
 
     def test_report_escaped(self):
-        """ Test that . """
+        """ Test that string escaped correctly. """
         engine2 = create_engine('sqlite:///:memory:', echo=True)
 
         Base = declarative_base(bind=engine2)
@@ -359,6 +390,10 @@ class TestSQLTap(object):
         assert "<blockquote class='test'>" not in report
         assert "&#34;&lt;blockquote class=&#39;test&#39;&gt;&#34;" in report
         profiler.stop()
+
+    def test_context_return_self(self):
+        with sqltap.ProfilingSession() as profiler:
+            assert type(profiler) is sqltap.ProfilingSession
 
 
 class TestSQLTapMiddleware(TestSQLTap):

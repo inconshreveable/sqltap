@@ -1,5 +1,6 @@
 from __future__ import division
 
+import datetime
 import time
 import traceback
 import collections
@@ -10,10 +11,16 @@ try:
 except ImportError:
     import Queue as queue
 
+import mako.exceptions
 import mako.template
 import mako.lookup
 import sqlalchemy.engine
 import sqlalchemy.event
+
+
+REPORT_HTML = "html"
+REPORT_WSGI = "wsgi"
+REPORT_TEXT = "text"
 
 
 class QueryStats(object):
@@ -37,6 +44,9 @@ class QueryStats(object):
         self.stack = stack
         self.duration = duration
         self.user_context = user_context
+
+        if self.params is None:
+            self.params = {}
 
     def __repr__(self):
         return "<%s text=%r params=%r duration=%f>" % (
@@ -200,6 +210,7 @@ class ProfilingSession(object):
     def __enter__(self, *args, **kwargs):
         """ context manager """
         self.start()
+        return self
 
     def __exit__(self, *args, **kwargs):
         """ context manager """
@@ -211,6 +222,207 @@ class ProfilingSession(object):
             with self:
                 return fn(*args, **kwargs)
         return decorated
+
+
+class QueryGroup(object):
+    """ A QueryGroup stores profiling statistics data on a set of similar
+    queries, including their query text/time/count, backtrace stacks.
+    """
+
+    def __init__(self):
+        self.queries = []
+        self.stacks = collections.defaultdict(int)
+        self.callers = {}
+        self.max = 0
+        self.min = sys.maxsize
+        self.sum = 0
+        self.mean = 0
+        self.median = 0
+
+    def find_user_fn(self, stack):
+        """ rough heuristic to try to figure out what user-defined func
+            in the call stack (i.e. not sqlalchemy) issued the query
+        """
+        for frame in reversed(stack):
+            # frame[0] is the file path to the module
+            if 'sqlalchemy' not in frame[0]:
+                return frame
+
+    def add(self, q):
+        if not bool(self.queries):
+            self.text = str(q.text)
+            self.first_word = self.text.split()[0]
+        self.queries.append(q)
+        self.stacks[q.stack_text] += 1
+        self.callers[q.stack_text] = self.find_user_fn(q.stack)
+
+        self.max = max(self.max, q.duration)
+        self.min = min(self.min, q.duration)
+        self.sum = self.sum + q.duration
+        self.mean = self.sum / len(self.queries)
+
+    def calc_median(self):
+        queries = sorted(self.queries, key=lambda q: q.duration,
+                         reverse=True)
+        length = len(queries)
+        if not length % 2:
+            x1 = queries[length // 2].duration
+            x2 = queries[length // 2 - 1].duration
+            self.median = (x1 + x2) / 2
+        else:
+            self.median = queries[length // 2].duration
+
+
+class Reporter(object):
+    """ An SQLTap Reporter base class """
+
+    REPORT_TITLE = "SQLTap Profiling Report"
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file=None, template_dir=None, **kwargs):
+        """ Create a new :class:`Reporter` object
+
+        :param stats: An iterable of :class:`QueryStats` objects over
+            which to prepare a report. This is typically a list returned by
+            a call to :func:`collect`.
+
+        :param report_file: If present, additionally write the SQLTap report
+            out to a file at the specified file.
+
+        :param report_dir: If present, additionally write the SQLTap report
+            out to a file under the specified folder.
+
+        :param template_file: filename of the template to generate the report.
+
+        :param template_dir: folder of the template to generate the report.
+        """
+        self.stats = stats
+        self.report_file = report_file
+        self.report_dir = report_dir
+        self.template_file = template_file
+        self.template_dir = template_dir
+        self.kwargs = kwargs
+
+        self._process_stats()
+
+    def render(self, ex_handler=mako.exceptions.html_error_template):
+        current_time = str(datetime.datetime.now())
+        try:
+            result = self.template.render(
+                query_groups=self._query_groups,
+                all_group=self._all_group,
+                report_title=self.REPORT_TITLE,
+                report_time=current_time,
+                **self.kwargs)
+        except Exception:
+            return ex_handler().render()
+        return result
+
+    def report(self, log_mode='w'):
+        content = self.render()
+
+        if self.report_file:
+            report_file = os.path.join(self.report_dir, self.report_file)
+            with open(report_file, log_mode) as f:
+                f.write(content)
+
+        return content
+
+    def _init_template(self, template_filters=['unicode', 'h']):
+        # create the template lookup
+        if self.template_file is None:
+            raise Exception("SQLTap Report template file not specified!")
+
+        # (we need this for extensions inheriting the base template)
+        if self.template_dir is None:
+            self.template_dir = os.path.join(os.path.dirname(__file__),
+                                             "templates")
+
+        # mako fixes unicode -> str on py3k
+        lookup = mako.lookup.TemplateLookup(self.template_dir,
+                                            default_filters=template_filters)
+        self.template = lookup.get_template(self.template_file)
+
+    def _process_stats(self):
+        """ Process query statistics
+
+        Generate sorted :class:`QueryGroup` in :param:self._query_groups and
+        all-in-one :class:`QueryGroup` in :param:self._all_group
+        """
+        query_groups = collections.defaultdict(QueryGroup)
+        all_group = QueryGroup()
+
+        # group together statistics for the same query
+        for qstats in self.stats:
+            qstats.stack_text = \
+                ''.join(traceback.format_list(qstats.stack)).strip()
+
+            group = query_groups[str(qstats.text)]
+            group.add(qstats)
+            all_group.add(qstats)
+
+        query_groups = sorted(query_groups.values(), key=lambda g: g.sum,
+                              reverse=True)
+
+        # calculate the median for each group
+        for g in query_groups:
+            g.calc_median()
+
+        self._query_groups = query_groups
+        self._all_group = all_group
+
+
+class HTMLReporter(Reporter):
+    """ A SQLTap Reporter that generates HTML format reports """
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file="html.mako", template_dir=None, **kwargs):
+        super(HTMLReporter, self).__init__(
+            stats,
+            report_file=report_file,
+            report_dir=report_dir,
+            template_file=template_file,
+            template_dir=template_dir,
+            **kwargs)
+
+        self._init_template(template_filters=['unicode', 'h'])
+
+
+class WSGIReporter(HTMLReporter):
+    """ A SQLTap Reporter that generates WSGI format reports """
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file="wsgi.mako", template_dir=None, **kwargs):
+        super(WSGIReporter, self).__init__(
+            stats,
+            report_file=report_file,
+            report_dir=report_dir,
+            template_file=template_file,
+            template_dir=template_dir,
+            **kwargs)
+
+
+class TextReporter(Reporter):
+    """ A SQLTap Reporter that generates text format reports """
+
+    def __init__(self, stats, report_file=None, report_dir=".",
+                 template_file="text.mako", template_dir=None, **kwargs):
+        super(TextReporter, self).__init__(
+            stats,
+            report_file=report_file,
+            report_dir=report_dir,
+            template_file=template_file,
+            template_dir=template_dir,
+            **kwargs)
+
+        self._init_template(template_filters=['unicode'])
+
+    def render(self):
+        return super(TextReporter, self).render(
+            ex_handler=mako.exceptions.text_error_template)
+
+    def report(self):
+        return super(TextReporter, self).report(log_mode='a')
 
 
 def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
@@ -227,110 +439,46 @@ def start(engine=sqlalchemy.engine.Engine, user_context_fn=None,
     return session
 
 
-def report(statistics, filename=None, template="report.mako", **kwargs):
+def report(statistics, filename=None, template="html.mako", **kwargs):
     """ Generate an HTML report of query statistics.
 
     :param statistics: An iterable of :class:`QueryStats` objects over
         which to prepare a report. This is typically a list returned by
         a call to :func:`collect`.
 
-    :param filename: If present, additionally write the html report out
-        to a file at the specified path.
+    :param filename: If present, additionally write the report out to a file at
+        the specified path.
 
-    :param template: The name of the file in the sqltap/templates
-        directory to render for the report. This is mostly intended for
-        extensions to sqltap (like the wsgi extension).
+    :param template: The name of the file in the sqltap/templates directory to
+        render for the report. This is mostly intended for extensions to sqltap
+        (like the wsgi extension). Not working when :param:`report_format`
+        specified.
 
-    :param kwargs: Additional keyword arguments to be passed to the
-        template. Intended for extensions.
+    :param report_format: (Optional) Choose the format for SQLTap report,
+        candidates are ["html", "wsgi", "text"]
 
-    :return: The generated HTML report.
+    :return: The generated SQLTap Report.
     """
+    REPORTER_MAPPING = {REPORT_HTML: HTMLReporter,
+                        REPORT_WSGI: WSGIReporter,
+                        REPORT_TEXT: TextReporter}
 
-    class QueryGroup:
-        def __init__(self):
-            self.queries = []
-            self.stacks = collections.defaultdict(int)
-            self.callers = {}
-            self.max = 0
-            self.min = sys.maxsize
-            self.sum = 0
-            self.mean = 0
-            self.median = 0
+    report_format = kwargs.get('report_format')
+    if report_format:
+        report_format = report_format.lower()
 
-        def find_user_fn(self, stack):
-            """ rough heuristic to try to figure out what user-defined func
-                in the call stack (i.e. not sqlalchemy) issued the query
-            """
-            for frame in reversed(stack):
-                # frame[0] is the file path to the module
-                if 'sqlalchemy' not in frame[0]:
-                    return frame
+        if report_format not in REPORTER_MAPPING.keys():
+            raise Exception("Format |%s| is not valid! formats supported: %s ",
+                            (report_format, REPORTER_MAPPING.keys()))
 
-        def add(self, q):
-            if not bool(self.queries):
-                self.text = str(q.text)
-                self.first_word = self.text.split()[0]
-            self.queries.append(q)
-            self.stacks[q.stack_text] += 1
-            self.callers[q.stack_text] = self.find_user_fn(q.stack)
+        reporter = REPORTER_MAPPING[report_format](
+            statistics, report_file=filename, **kwargs)
+    else:
+        reporter = HTMLReporter(
+            statistics, report_file=filename, template_file=template, **kwargs)
 
-            self.max = max(self.max, q.duration)
-            self.min = min(self.min, q.duration)
-            self.sum = self.sum + q.duration
-            self.mean = self.sum / len(self.queries)
-
-        def calc_median(self):
-            queries = sorted(self.queries, key=lambda q: q.duration,
-                             reverse=True)
-            length = len(queries)
-            if not length % 2:
-                x1 = queries[length // 2].duration
-                x2 = queries[length // 2 - 1].duration
-                self.median = (x1 + x2) / 2
-            else:
-                self.median = queries[length // 2].duration
-
-    query_groups = collections.defaultdict(QueryGroup)
-    all_group = QueryGroup()
-
-    # group together statistics for the same query
-    for qstats in statistics:
-        qstats.stack_text = \
-            ''.join(traceback.format_list(qstats.stack)).strip()
-
-        group = query_groups[str(qstats.text)]
-        group.add(qstats)
-        all_group.add(qstats)
-
-    query_groups = sorted(query_groups.values(), key=lambda g: g.sum,
-                          reverse=True)
-
-    # calculate the median for each group
-    for g in query_groups:
-        g.calc_median()
-
-    # create the template lookup
-    # (we need this for extensions inheriting the base template)
-    tmpl_dir = os.path.join(os.path.dirname(__file__), "templates")
-    # mako fixes unicode -> str on py3k
-    lookup = mako.lookup.TemplateLookup(tmpl_dir,
-                                        default_filters=['unicode', 'h'])
-
-    # render the template
-    html = lookup.get_template(template).render(
-        query_groups=query_groups,
-        all_group=all_group,
-        name="SQLTap Profiling Report",
-        **kwargs
-    )
-
-    # write it out to a file if you asked for it
-    if filename:
-        with open(filename, 'w') as f:
-            f.write(html)
-
-    return html
+    result = reporter.report()
+    return result
 
 
 def _hotfix_dispatch_remove():

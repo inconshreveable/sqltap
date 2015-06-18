@@ -7,7 +7,7 @@
     <meta name="description" content="sqltap profile">
     <meta name="author" content="inconshreveable">
 
-    <title>sqltap profile report</title>
+    <title>${report_title}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
