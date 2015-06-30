@@ -149,7 +149,7 @@ ${group.first_word}
                       <strong>${fr[2]}</strong> @${fr[0].split()[-1]}:${fr[1]}
                       </h5>
                     </a>
-                    <pre class="trace hidden">${trace}</pre>
+                    <pre class="trace hidden">${trace.decode('utf-8')}</pre>
                   </li>
                   % endfor
               </ul>
