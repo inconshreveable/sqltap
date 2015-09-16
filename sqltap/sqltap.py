@@ -38,19 +38,20 @@ class QueryStats(object):
     :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
-    def __init__(self, text, stack, duration, user_context):
+    def __init__(self, text, stack, duration, user_context, rowcount):
         self.text = text
         self.params = getattr(text, 'params', {})
         self.stack = stack
         self.duration = duration
         self.user_context = user_context
+        self.rowcount = rowcount
 
         if self.params is None:
             self.params = {}
 
     def __repr__(self):
-        return "<%s text=%r params=%r duration=%f>" % (
-            self.__class__.__name__, self.text, self.params, self.duration)
+        return "<%s text=%r params=%r duration=%f rowcount=%d>" % (
+            self.__class__.__name__, self.text, self.params, self.duration, self.rowcount)
 
 
 class ProfilingSession(object):
@@ -159,7 +160,7 @@ class ProfilingSession(object):
 
         # add the querystats to the collector
         self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1],
-                                   duration, context))
+                                   duration, context, results.rowcount))
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.

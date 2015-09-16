@@ -43,6 +43,7 @@ ${"Query %d:" % j}
     % for key, value in query.params.items():
     ${key}: ${value}
     % endfor
+  Query rowcount: ${'%d' % query.rowcount}
 % endfor ## end for j, query in enumerate(reversed(group.queries))
 
 ${"------------{0: ^48}------------".format("QueryGroup %d stacks" % i)}

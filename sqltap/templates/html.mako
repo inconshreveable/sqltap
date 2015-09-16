@@ -113,6 +113,7 @@ ${group.first_word}
                 % for param_name in params:
                   <th><code>${param_name}</code></th>
                 % endfor
+                  <th>Row Count</th>
                 </tr>
                 % for idx, query in enumerate(reversed(group.queries)):
                 <tr class="${'hidden' if idx >= 3 else ''}">
@@ -120,6 +121,7 @@ ${group.first_word}
                     % for param_name in params:
                     <td>${query.text.params[param_name]}</td>
                     % endfor
+                    <td>${'%d' % query.rowcount}</td>
                 </tr>
                 % endfor
               </table>
