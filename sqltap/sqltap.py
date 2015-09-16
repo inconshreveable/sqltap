@@ -237,6 +237,7 @@ class QueryGroup(object):
         self.max = 0
         self.min = sys.maxsize
         self.sum = 0
+        self.rowcounts = 0
         self.mean = 0
         self.median = 0
 
@@ -259,7 +260,8 @@ class QueryGroup(object):
 
         self.max = max(self.max, q.duration)
         self.min = min(self.min, q.duration)
-        self.sum = self.sum + q.duration
+        self.sum += q.duration
+        self.rowcounts += q.rowcount
         self.mean = self.sum / len(self.queries)
 
     def calc_median(self):

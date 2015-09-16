@@ -56,9 +56,14 @@
             % for i, group in enumerate(query_groups):
             <li class="${'active' if i==0 else ''}">
               <a href="#query-${i}" data-toggle="tab">
-                <span class="label label-warning pull-right">${'%.3f' % group.sum}s</span>
                 <span class="label label-info pull-right" style="margin-right: 5px">
-                  ${len(group.queries)}
+                    ${group.rowcounts}r
+                </span>
+                <span class="label label-warning pull-right" style="margin-right: 5px">
+                    ${'%.3f' % group.sum}s
+                </span>
+                <span class="label label-info pull-right" style="margin-right: 5px">
+                  ${len(group.queries)}q
                 </span>
 ${group.first_word}
               </a>
