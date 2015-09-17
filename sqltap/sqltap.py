@@ -38,20 +38,26 @@ class QueryStats(object):
     :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
-    def __init__(self, text, stack, duration, user_context, rowcount):
+    def __init__(self, text, stack, duration, user_context, results):
         self.text = text
         self.params = getattr(text, 'params', {})
+        self.params_id = None
         self.stack = stack
         self.duration = duration
         self.user_context = user_context
-        self.rowcount = rowcount
+        self.rowcount = results.rowcount
 
         if self.params is None:
             self.params = {}
 
+        h = 0
+        for v in self.params.itervalues():
+            h ^= 10009 * hash(v)
+        self.params_hash = (h ^ (h >> 32)) & ((1 << 32) - 1)  # convert to 32-bit unsigned
+
     def __repr__(self):
-        return "<%s text=%r params=%r duration=%f rowcount=%d>" % (
-            self.__class__.__name__, self.text, self.params, self.duration, self.rowcount)
+        return "<%s text=%r params=%r duration=%f rowcount=%d params_hash=%x>" % (
+            self.__class__.__name__, self.text, self.params, self.duration, self.rowcount, self.params_hash)
 
 
 class ProfilingSession(object):
@@ -160,7 +166,7 @@ class ProfilingSession(object):
 
         # add the querystats to the collector
         self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1],
-                                   duration, context, results.rowcount))
+                                   duration, context, results))
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.
@@ -230,9 +236,12 @@ class QueryGroup(object):
     queries, including their query text/time/count, backtrace stacks.
     """
 
+    ParamsID = 1
+
     def __init__(self):
         self.queries = []
         self.stacks = collections.defaultdict(int)
+        self.params_hashes = {}
         self.callers = {}
         self.max = 0
         self.min = sys.maxsize
@@ -257,6 +266,14 @@ class QueryGroup(object):
         self.queries.append(q)
         self.stacks[q.stack_text] += 1
         self.callers[q.stack_text] = self.find_user_fn(q.stack)
+
+        count, params_id, params = self.params_hashes.get(
+            q.params_hash, (0, None, q.params))
+        if params_id is None:
+            self.__class__.ParamsID += 1
+            params_id = self.ParamsID
+        self.params_hashes[q.params_hash] = (count+1, params_id, params)
+        q.params_id = q.params_id or params_id
 
         self.max = max(self.max, q.duration)
         self.min = min(self.min, q.duration)
