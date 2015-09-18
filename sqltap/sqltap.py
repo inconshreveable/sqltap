@@ -165,20 +165,23 @@ class ProfilingSession(object):
         cursor_parameters = getattr(conn, '_sqltap_params', None)
         query_params = getattr(text, 'params', {})
         params_dict = self._fixup_parameters(
-            cursor_parameters, multiparams, params, query_params)
+            text, cursor_parameters, multiparams, params, query_params)
 
         stack = traceback.extract_stack()[:-1]
         qstats = QueryStats(text, stack, duration, context, params_dict)
 
         self.collect_fn(qstats)
 
-    def _fixup_parameters(self, cursor_parameters, multiparams, params, query_params):
-        result = query_params.copy()
-        for param_dict in multiparams:
-            for k,v in param_dict.iteritems():
-                if k in result:
-                    if result[k] is None and v is not None:
-                        result[k] = v
+    def _fixup_parameters(self, text, cursor_parameters, multiparams, params, query_params):
+        result = {}
+        for k,v in query_params.iteritems():
+            result[k] = v
+            if v is None:
+                label = text.binds[k]._identifying_key
+                for param_dict in multiparams:
+                    if label in param_dict:
+                        result[k] = param_dict[label]
+                        break
         return result
 
     def collect(self):
