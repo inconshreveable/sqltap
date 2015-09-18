@@ -38,9 +38,9 @@ class QueryStats(object):
     :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
-    def __init__(self, text, stack, duration, user_context):
+    def __init__(self, text, stack, duration, user_context, params_dict):
         self.text = text
-        self.params = getattr(text, 'params', {})
+        self.params = params_dict
         self.stack = stack
         self.duration = duration
         self.user_context = user_context
@@ -140,6 +140,12 @@ class ProfilingSession(object):
         """ SQLAlchemy event hook """
         conn._sqltap_query_start_time = time.time()
 
+    def _after_cursor_exec(
+            self, conn, cursor, statement, parameters, context, executemany):
+        """ SQLAlchemy event hook """
+        # calculate the query time
+        conn._sqltap_params = parameters
+
     def _after_exec(self, conn, clause, multiparams, params, results):
         """ SQLAlchemy event hook """
         # calculate the query time
@@ -149,17 +155,31 @@ class ProfilingSession(object):
 
         # get the user's context
         context = (None if not self.user_context_fn else
-                   self.user_context_fn(conn, clause, multiparams, params,
-                                        results))
+                   self.user_context_fn(conn, clause, multiparams, params, results))
 
         try:
             text = clause.compile(dialect=conn.engine.dialect)
         except AttributeError:
             text = clause
 
-        # add the querystats to the collector
-        self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1],
-                                   duration, context))
+        cursor_parameters = getattr(conn, '_sqltap_params', None)
+        query_params = getattr(text, 'params', {})
+        params_dict = self._fixup_parameters(
+            cursor_parameters, multiparams, params, query_params)
+
+        stack = traceback.extract_stack()[:-1]
+        qstats = QueryStats(text, stack, duration, context, params_dict)
+
+        self.collect_fn(qstats)
+
+    def _fixup_parameters(self, cursor_parameters, multiparams, params, query_params):
+        result = query_params.copy()
+        for param_dict in multiparams:
+            for k,v in param_dict.iteritems():
+                if k in result:
+                    if result[k] is None and v is not None:
+                        result[k] = v
+        return result
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.
@@ -191,6 +211,8 @@ class ProfilingSession(object):
         self.started = True
         sqlalchemy.event.listen(self.engine, "before_execute",
                                 self._before_exec)
+        sqlalchemy.event.listen(self.engine, "after_cursor_execute",
+                                self._after_cursor_exec)
         sqlalchemy.event.listen(self.engine, "after_execute", self._after_exec)
 
     def stop(self):
@@ -205,6 +227,8 @@ class ProfilingSession(object):
         self.started = False
         sqlalchemy.event.remove(self.engine, "before_execute",
                                 self._before_exec)
+        sqlalchemy.event.remove(self.engine, "after_cursor_execute",
+                                self._after_cursor_exec)
         sqlalchemy.event.remove(self.engine, "after_execute", self._after_exec)
 
     def __enter__(self, *args, **kwargs):
