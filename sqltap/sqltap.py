@@ -140,12 +140,6 @@ class ProfilingSession(object):
         """ SQLAlchemy event hook """
         conn._sqltap_query_start_time = time.time()
 
-    def _after_cursor_exec(
-            self, conn, cursor, statement, parameters, context, executemany):
-        """ SQLAlchemy event hook """
-        # calculate the query time
-        conn._sqltap_params = parameters
-
     def _after_exec(self, conn, clause, multiparams, params, results):
         """ SQLAlchemy event hook """
         # calculate the query time
@@ -162,17 +156,16 @@ class ProfilingSession(object):
         except AttributeError:
             text = clause
 
-        cursor_parameters = getattr(conn, '_sqltap_params', None)
         query_params = getattr(text, 'params', {})
         params_dict = self._fixup_parameters(
-            text, cursor_parameters, multiparams, params, query_params)
+            text, multiparams, query_params)
 
         stack = traceback.extract_stack()[:-1]
         qstats = QueryStats(text, stack, duration, context, params_dict)
 
         self.collect_fn(qstats)
 
-    def _fixup_parameters(self, text, cursor_parameters, multiparams, params, query_params):
+    def _fixup_parameters(self, text, multiparams, query_params):
         result = {}
         for k,v in query_params.iteritems():
             result[k] = v
@@ -214,8 +207,6 @@ class ProfilingSession(object):
         self.started = True
         sqlalchemy.event.listen(self.engine, "before_execute",
                                 self._before_exec)
-        sqlalchemy.event.listen(self.engine, "after_cursor_execute",
-                                self._after_cursor_exec)
         sqlalchemy.event.listen(self.engine, "after_execute", self._after_exec)
 
     def stop(self):
@@ -230,8 +221,6 @@ class ProfilingSession(object):
         self.started = False
         sqlalchemy.event.remove(self.engine, "before_execute",
                                 self._before_exec)
-        sqlalchemy.event.remove(self.engine, "after_cursor_execute",
-                                self._after_cursor_exec)
         sqlalchemy.event.remove(self.engine, "after_execute", self._after_exec)
 
     def __enter__(self, *args, **kwargs):
