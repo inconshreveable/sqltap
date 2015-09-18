@@ -118,7 +118,7 @@ ${group.first_word}
                 <tr class="${'hidden' if idx >= 3 else ''}">
                     <td>${'%.3f' % query.duration}</td>
                     % for param_name in params:
-                    <td>${query.text.params[param_name]}</td>
+                    <td>${query.params[param_name]}</td>
                     % endfor
                 </tr>
                 % endfor
