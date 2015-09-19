@@ -159,20 +159,24 @@ ${group.first_word}
                   supplied.
               </h4>
               <ul class="details">
-                  % for hash, (count, params_id, params) in group.params_hashes.items():
-                      <li>
-                        <h5>
-                          ${count}
-                          ${'call' if count == 1 else 'calls'}
-                          (Params ID: ${params_id}) with
-                          <tt>
-                            ${", ".join(["%s=%r" % (k,params[k]) for k in sorted(params.keys()) if params[k] is not None])}
-                          </tt>
-                        </h5>
-                      </li>
-                  % endfor
+                % for idx, (hash, (count, params_id, params)) in enumerate(group.params_hashes.items()):
+                  <li class="${'hidden' if idx >= 3 else ''}">
+                    <h5>
+                      ${count}
+                      ${'call' if count == 1 else 'calls'}
+                      (Params ID: ${params_id}) with
+                      <tt>
+                        ${", ".join(["%s=%r" % (k,params[k]) for k in sorted(params.keys()) if params[k] is not None])}
+                      </tt>
+                    </h5>
+                  </li>
+                % endfor
               </ul>
+              % if len(group.params_hashes) > 3:
+                  <a href="#" class="moreparams">show ${len(group.params_hashes)-3} more parameter sets</a>
+              % endif
 
+              <hr />
               <% stack_count = len(group.stacks) %>
               <h4>
                   ${stack_count} unique
@@ -225,6 +229,11 @@ ${group.first_word}
                 e.preventDefault();
                 $(this).hide();
                 $(this).prev("table").find("tr.hidden").removeClass("hidden");
+            });
+            $(".moreparams").click(function(e) {
+                e.preventDefault();
+                $(this).hide();
+                $(this).prev("ul").find("li.hidden").removeClass("hidden");
             });
         });
     </script>
