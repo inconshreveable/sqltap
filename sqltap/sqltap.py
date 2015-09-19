@@ -38,12 +38,14 @@ class QueryStats(object):
     :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
-    def __init__(self, text, stack, duration, user_context, params_dict, results):
+    def __init__(self, text, stack, start_time, end_time, user_context, params_dict, results):
         self.text = text
         self.params = params_dict
         self.params_id = None
         self.stack = stack
-        self.duration = duration
+        self.start_time = start_time
+        self.end_time = end_time
+        self.duration = end_time - start_time
         self.user_context = user_context
         self.rowcount = results.rowcount
 
@@ -152,7 +154,6 @@ class ProfilingSession(object):
         # calculate the query time
         end_time = time.time()
         start_time = getattr(conn, '_sqltap_query_start_time', end_time)
-        duration = end_time - start_time
 
         # get the user's context
         context = (None if not self.user_context_fn else
@@ -168,7 +169,8 @@ class ProfilingSession(object):
             text, multiparams, query_params)
 
         stack = traceback.extract_stack()[:-1]
-        qstats = QueryStats(text, stack, duration, context, params_dict, results)
+        qstats = QueryStats(text, stack, start_time, end_time,
+                            context, params_dict, results)
 
         self.collect_fn(qstats)
 
@@ -333,6 +335,7 @@ class Reporter(object):
 
         :param template_dir: folder of the template to generate the report.
         """
+        self.duration = (stats[-1].end_time - stats[0].start_time) if stats else 0
         self.stats = stats
         self.report_file = report_file
         self.report_dir = report_dir
@@ -350,6 +353,7 @@ class Reporter(object):
                 all_group=self._all_group,
                 report_title=self.REPORT_TITLE,
                 report_time=current_time,
+                duration=self.duration,
                 **self.kwargs)
         except Exception:
             return ex_handler().render()

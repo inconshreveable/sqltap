@@ -11,6 +11,7 @@ ${"======{0: ^60}======".format("Summary")}
 ========================================================================
 Total queries: ${len(all_group.queries)}
 Total time: ${'%.2f' % all_group.sum} second(s)
+Total profiling time: ${'%.2f' % duration} second(s)
 
 ========================================================================
 ${"======{0: ^60}======".format("Details")}

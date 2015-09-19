@@ -43,6 +43,7 @@
           <p id="total-time" class="navbar-text">
             <span class="count">${len(all_group.queries)}</span> queries spent
             <span class="sum">${'%.2f' % all_group.sum}</span> seconds
+            over <span class="sum">${'%.2f' % duration}</span> seconds of profiling
           </p>
           <%block name="header_extra"></%block>
         </div>
