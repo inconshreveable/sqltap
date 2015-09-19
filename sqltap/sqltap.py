@@ -38,9 +38,9 @@ class QueryStats(object):
     :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
-    def __init__(self, text, stack, duration, user_context, results):
+    def __init__(self, text, stack, duration, user_context, params_dict, results):
         self.text = text
-        self.params = getattr(text, 'params', {})
+        self.params = params_dict
         self.params_id = None
         self.stack = stack
         self.duration = duration
@@ -156,17 +156,34 @@ class ProfilingSession(object):
 
         # get the user's context
         context = (None if not self.user_context_fn else
-                   self.user_context_fn(conn, clause, multiparams, params,
-                                        results))
+                   self.user_context_fn(conn, clause, multiparams, params, results))
 
         try:
             text = clause.compile(dialect=conn.engine.dialect)
         except AttributeError:
             text = clause
 
-        # add the querystats to the collector
-        self.collect_fn(QueryStats(text, traceback.extract_stack()[:-1],
-                                   duration, context, results))
+        query_params = getattr(text, 'params', {})
+        params_dict = self._fixup_parameters(
+            text, multiparams, query_params)
+
+        stack = traceback.extract_stack()[:-1]
+        qstats = QueryStats(text, stack, duration, context, params_dict, results)
+
+        self.collect_fn(qstats)
+
+    def _fixup_parameters(self, text, multiparams, query_params):
+        result = {}
+        if query_params:
+            for k,v in query_params.iteritems():
+                result[k] = v
+                if v is None:
+                    label = text.binds[k]._identifying_key
+                    for param_dict in multiparams:
+                        if label in param_dict:
+                            result[k] = param_dict[label]
+                            break
+        return result
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.
