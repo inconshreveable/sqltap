@@ -150,8 +150,29 @@ ${group.first_word}
               <hr />
               <% params_hash_count = len(group.params_hashes) %>
               <h4>
-                  ${params_hash_count} unique parameter set(s) are supplied.
+                  ${params_hash_count} unique parameter
+                  % if params_hash_count == 1:
+                      set is
+                  % else:
+                      sets are
+                  % endif
+                  supplied.
               </h4>
+              <ul class="details">
+                  % for hash, (count, params_id, params) in group.params_hashes.items():
+                      <li>
+                        <h5>
+                          ${count}
+                          ${'call' if count == 1 else 'calls'}
+                          (Params ID: ${params_id}) with
+                          <tt>
+                            ${", ".join(["%s=%r" % (k,params[k]) for k in sorted(params.keys()) if params[k] is not None])}
+                          </tt>
+                        </h5>
+                      </li>
+                  % endfor
+              </ul>
+
               <% stack_count = len(group.stacks) %>
               <h4>
                   ${stack_count} unique
