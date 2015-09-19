@@ -16,11 +16,19 @@ import mako.template
 import mako.lookup
 import sqlalchemy.engine
 import sqlalchemy.event
+import sqlparse
 
 
 REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
 REPORT_TEXT = "text"
+
+
+def format_sql(sql):
+    try:
+        return sqlparse.format(sql, reindent=True)
+    except Exception:
+        return sql
 
 
 class QueryStats(object):
@@ -280,6 +288,7 @@ class QueryGroup(object):
     def add(self, q):
         if not bool(self.queries):
             self.text = str(q.text)
+            self.formatted_text = format_sql(self.text)
             self.first_word = self.text.split()[0]
         self.queries.append(q)
         self.stacks[q.stack_text] += 1

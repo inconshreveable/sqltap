@@ -160,7 +160,7 @@ class TestSQLTap(object):
 
         sess = self.Session()
         q = sess.query(self.A)
-        qtext = str(q)
+        qtext = sqltap.format_sql(str(q))
         q.all()
 
         stats = profiler.collect()
@@ -183,7 +183,7 @@ class TestSQLTap(object):
         stats = profiler.collect()
         report = sqltap.report(stats, report_format="html")
         assert REPORT_TITLE in report
-        assert sql in report
+        assert sqltap.format_sql(sql) in report
         report = sqltap.report(stats, report_format="text")
         assert REPORT_TITLE in report
         assert sqlparse.format(sql, reindent=True) in report

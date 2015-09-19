@@ -1,6 +1,3 @@
-<%!
-    import sqlparse
-%>
 ========================================================================
 ${"======{TITLE: ^60}======".format(TITLE=report_title)}
 ========================================================================
@@ -27,14 +24,7 @@ Query mean time: ${'%.3f' % group.mean} second(s)
 Query median time: ${'%.3f' % group.median} second(s)
 
 ${"------------{0: ^48}------------".format("QueryGroup %d SQL pattern" % i)}
-<%
-    def format_sql(sql):
-        try:
-            return sqlparse.format(sql, reindent=True)
-        except Exception:
-            return sql
-%>
-${format_sql(group.text)}
+${group.formatted_text}
 
 ${"------------{0: ^48}------------".format("QueryGroup %d breakdown" % i)}
 % for j, query in enumerate(reversed(group.queries)):
