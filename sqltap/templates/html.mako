@@ -10,11 +10,10 @@
     <title>${report_title}</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- syntax highlighting -->
-    <link href="http://yandex.st/highlightjs/8.0/styles/default.min.css" rel="stylesheet">
-    <script src="http://yandex.st/highlightjs/8.0/highlight.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.8.0/styles/default.min.css" rel="stylesheet">
     <style type="text/css">
       body { padding-top: 60px; }
       #query-groups {
@@ -113,7 +112,7 @@ ${group.first_word}
               </h4>
 
               <hr />
-              <pre><code>${group.text}</code></pre>
+              <pre><code class="sql">${group.text}</code></pre>
               <hr />
 
               <%
@@ -189,8 +188,8 @@ ${group.first_word}
 
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-    <script src="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.8.0/highlight.min.js"></script>
     <script>hljs.initHighlightingOnLoad();</script>
     <script type="text/javascript">
         jQuery(function($) {
