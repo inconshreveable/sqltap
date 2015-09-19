@@ -1,3 +1,11 @@
+<%!
+    import sqlparse
+    def format_sql(sql):
+        try:
+            return sqlparse.format(sql, reindent=True)
+        except Exception:
+            return sql
+%>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -112,7 +120,7 @@ ${group.first_word}
               </h4>
 
               <hr />
-              <pre><code class="sql">${group.text}</code></pre>
+              <pre><code class="sql">${format_sql(group.text)}</code></pre>
               <hr />
 
               <%
