@@ -343,7 +343,7 @@ class Reporter(object):
         self._process_stats()
 
     def render(self, ex_handler=mako.exceptions.html_error_template):
-        current_time = str(datetime.datetime.now())
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             result = self.template.render(
                 query_groups=self._query_groups,

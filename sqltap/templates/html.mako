@@ -72,7 +72,15 @@ ${group.first_word}
           % endfor
           </ul>
 
+          <hr />
+
+            <div>
+            <span>Report Generated: ${report_time}</span>
+          </div>
         </div>
+
+        <!-- ================================================== -->
+
         <div class="col-xs-9">
 
           <div class="tab-content">
