@@ -167,14 +167,15 @@ class ProfilingSession(object):
 
     def _fixup_parameters(self, text, multiparams, query_params):
         result = {}
-        for k,v in query_params.iteritems():
-            result[k] = v
-            if v is None:
-                label = text.binds[k]._identifying_key
-                for param_dict in multiparams:
-                    if label in param_dict:
-                        result[k] = param_dict[label]
-                        break
+        if query_params:
+            for k,v in query_params.iteritems():
+                result[k] = v
+                if v is None:
+                    label = text.binds[k]._identifying_key
+                    for param_dict in multiparams:
+                        if label in param_dict:
+                            result[k] = param_dict[label]
+                            break
         return result
 
     def collect(self):
