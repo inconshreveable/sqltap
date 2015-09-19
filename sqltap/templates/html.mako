@@ -89,8 +89,16 @@ ${group.first_word}
               <h4 class="toggle">
                   <ul class="list-inline">
                     <li>
-                      <dt>Count</dt>
+                      <dt>Query Count</dt>
                       <dd>${len(group.queries)}</dd>
+                    </li>
+                    <li>
+                      <dt>Row Count</dt>
+                      <dd>${'%d' % group.rowcounts}</dd>
+                    </li>
+                    <li>
+                      <dt>Total Time</dt>
+                      <dd>${'%.3f' % group.sum}</dd>
                     </li>
                     <li>
                       <dt>Mean</dt>
