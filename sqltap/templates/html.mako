@@ -128,7 +128,7 @@ ${group.first_word}
                   <th><code>${param_name}</code></th>
                 % endfor
                   <th>Row Count</th>
-                  <th>Params Hash</th>
+##                <th>Params Hash</th>
                   <th>Params ID</th>
                 </tr>
                 % for idx, query in enumerate(reversed(group.queries)):
@@ -138,7 +138,7 @@ ${group.first_word}
                     <td>${query.params[param_name]}</td>
                     % endfor
                     <td>${'%d' % query.rowcount}</td>
-                    <td><tt>${'%08x' % query.params_hash}</tt></td>
+##                  <td><tt>${'%08x' % query.params_hash}</tt></td>
                     <td>${'%d' % query.params_id}</td>
                 </tr>
                 % endfor
@@ -148,6 +148,10 @@ ${group.first_word}
               % endif
 
               <hr />
+              <% params_hash_count = len(group.params_hashes) %>
+              <h4>
+                  ${params_hash_count} unique parameter set(s) are supplied.
+              </h4>
               <% stack_count = len(group.stacks) %>
               <h4>
                   ${stack_count} unique
@@ -173,10 +177,6 @@ ${group.first_word}
                   </li>
                   % endfor
               </ul>
-              <% params_hash_count = len(group.params_hashes) %>
-              <h4>
-                  ${params_hash_count} unique parameter set(s) are supplied.
-              </h4>
             </div>
 
             <!-- ================================================== -->

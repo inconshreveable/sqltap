@@ -48,18 +48,17 @@ class QueryStats(object):
         self.duration = end_time - start_time
         self.user_context = user_context
         self.rowcount = results.rowcount
+        self.params_hash = self._calculate_params_hash(self.params)
 
-        if self.params is None:
-            self.params = {}
-
+    def _calculate_params_hash(self, params):
         h = 0
-        for v in self.params.itervalues():
-            h ^= 10009 * hash(v)
-        self.params_hash = (h ^ (h >> 32)) & ((1 << 32) - 1)  # convert to 32-bit unsigned
+        for k in sorted(params.iterkeys()):
+            h ^= 10009 * hash(params[k])
+        return (h ^ (h >> 32)) & ((1 << 32) - 1)  # convert to 32-bit unsigned
 
     def __repr__(self):
-        return "<%s text=%r params=%r duration=%f rowcount=%d params_hash=%x>" % (
-            self.__class__.__name__, self.text, self.params, self.duration, self.rowcount, self.params_hash)
+        return "<%s text='%s...' params=%r duration=%.3f rowcount=%d params_hash=%08x>" % (
+            self.__class__.__name__, str(self.text)[:40], self.params, self.duration, self.rowcount, self.params_hash)
 
 
 class ProfilingSession(object):
