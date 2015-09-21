@@ -61,7 +61,7 @@ class QueryStats(object):
 
     def _calculate_params_hash(self, params):
         h = 0
-        for k in sorted(params.iterkeys()):
+        for k in sorted(params.keys()):
             h ^= 10009 * hash(params[k])
         return (h ^ (h >> 32)) & ((1 << 32) - 1)  # convert to 32-bit unsigned
 
