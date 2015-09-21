@@ -68,8 +68,8 @@ class QueryStats(object):
     def __repr__(self):
         return ("<%s text='%s...' params=%r "
                 "duration=%.3f rowcount=%d params_hash=%08x>" % (
-            self.__class__.__name__, str(self.text)[:40], self.params,
-            self.duration, self.rowcount, self.params_hash))
+                    self.__class__.__name__, str(self.text)[:40], self.params,
+                    self.duration, self.rowcount, self.params_hash))
 
 
 class ProfilingSession(object):
