@@ -46,7 +46,8 @@ class QueryStats(object):
     :attr user_context: The value returned by the user_context_fn set
         with :func:`sqltap.start`.
     """
-    def __init__(self, text, stack, start_time, end_time, user_context, params_dict, results):
+    def __init__(self, text, stack, start_time, end_time,
+                 user_context, params_dict, results):
         self.text = text
         self.params = params_dict
         self.params_id = None
@@ -65,8 +66,10 @@ class QueryStats(object):
         return (h ^ (h >> 32)) & ((1 << 32) - 1)  # convert to 32-bit unsigned
 
     def __repr__(self):
-        return "<%s text='%s...' params=%r duration=%.3f rowcount=%d params_hash=%08x>" % (
-            self.__class__.__name__, str(self.text)[:40], self.params, self.duration, self.rowcount, self.params_hash)
+        return ("<%s text='%s...' params=%r "
+                "duration=%.3f rowcount=%d params_hash=%08x>" % (
+            self.__class__.__name__, str(self.text)[:40], self.params,
+            self.duration, self.rowcount, self.params_hash))
 
 
 class ProfilingSession(object):
@@ -164,7 +167,8 @@ class ProfilingSession(object):
 
         # get the user's context
         context = (None if not self.user_context_fn else
-                   self.user_context_fn(conn, clause, multiparams, params, results))
+                   self.user_context_fn(conn, clause,
+                                        multiparams, params, results))
 
         try:
             text = clause.compile(dialect=conn.engine.dialect)
@@ -290,7 +294,7 @@ class QueryGroup(object):
         if params_id is None:
             self.__class__.ParamsID += 1
             params_id = self.ParamsID
-        self.params_hashes[q.params_hash] = (count+1, params_id, params)
+        self.params_hashes[q.params_hash] = (count + 1, params_id, params)
         q.params_id = q.params_id or params_id
 
         self.max = max(self.max, q.duration)
@@ -334,7 +338,8 @@ class Reporter(object):
 
         :param template_dir: folder of the template to generate the report.
         """
-        self.duration = (stats[-1].end_time - stats[0].start_time) if stats else 0
+        self.duration = ((stats[-1].end_time - stats[0].start_time)
+                         if stats else 0)
         self.stats = stats
         self.report_file = report_file
         self.report_dir = report_dir
