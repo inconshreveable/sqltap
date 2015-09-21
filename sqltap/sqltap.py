@@ -171,9 +171,7 @@ class ProfilingSession(object):
         except AttributeError:
             text = clause
 
-        query_params = getattr(text, 'params', {})
-        params_dict = self._fixup_parameters(
-            text, multiparams, query_params)
+        params_dict = self._extract_parameters_from_results(results)
 
         stack = traceback.extract_stack()[:-1]
         qstats = QueryStats(text, stack, start_time, end_time,
@@ -181,18 +179,11 @@ class ProfilingSession(object):
 
         self.collect_fn(qstats)
 
-    def _fixup_parameters(self, text, multiparams, query_params):
-        result = {}
-        if query_params:
-            for k,v in query_params.iteritems():
-                result[k] = v
-                if v is None:
-                    label = text.binds[k]._identifying_key
-                    for param_dict in multiparams:
-                        if label in param_dict:
-                            result[k] = param_dict[label]
-                            break
-        return result
+    def _extract_parameters_from_results(self, query_results):
+        params_dict = {}
+        for p in getattr(query_results.context, 'compiled_parameters', []):
+            params_dict.update(p)
+        return params_dict
 
     def collect(self):
         """ Return all queries collected by this profiling session so far.
