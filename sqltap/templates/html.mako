@@ -136,7 +136,6 @@ ${group.first_word}
                   <th><code>${param_name}</code></th>
                 % endfor
                   <th>Row Count</th>
-##                <th>Params Hash</th>
                   <th>Params ID</th>
                 </tr>
                 % for idx, query in enumerate(reversed(group.queries)):
@@ -146,7 +145,6 @@ ${group.first_word}
                     <td>${query.params[param_name]}</td>
                     % endfor
                     <td>${'%d' % query.rowcount}</td>
-##                  <td><tt>${'%08x' % query.params_hash}</tt></td>
                     <td>${'%d' % query.params_id}</td>
                 </tr>
                 % endfor
