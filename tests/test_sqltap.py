@@ -20,6 +20,11 @@ def _startswith(qs, text):
     return list(filter(lambda q: str(q.text).strip().startswith(text), qs))
 
 
+class MockResults(object):
+    def __init__(self, rowcount):
+        self.rowcount = rowcount
+
+
 class TestSQLTap(object):
 
     def setUp(self):
@@ -154,6 +159,20 @@ class TestSQLTap(object):
         sess.query(self.A).all()
 
         assert len(profiler.collect()) == 1
+
+    def test_querygroup_add_params(self):
+        group = sqltap.QueryGroup()
+        qstats1 = sqltap.QueryStats(
+            'SELECT * from pythons where name=:name', 'stack1', 1, 2, None,
+            {'name': 'Terry Jones'}, MockResults(1))
+        qstats2 = sqltap.QueryStats(
+            'SELECT * from movies where director=:name', 'stack1', 3, 4, None,
+            {'name': 'Terry Jones'}, MockResults(4))
+        print(qstats1)
+        print(qstats2)
+        group.add(qstats1)
+        group.add(qstats2)
+        assert 2 == len(group.params_hashes)
 
     def test_report(self):
         profiler = sqltap.start(self.engine)

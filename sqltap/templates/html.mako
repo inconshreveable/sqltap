@@ -165,7 +165,7 @@ ${group.first_word}
                   supplied.
               </h4>
               <ul class="details">
-                % for idx, (hash, (count, params_id, params)) in enumerate(group.params_hashes.items()):
+                % for idx, (count, params_id, params) in enumerate(group.params_hashes.values()):
                   <li class="${'hidden' if idx >= 3 else ''}">
                     <h5>
                       ${count}

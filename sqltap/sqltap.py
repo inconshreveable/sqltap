@@ -55,7 +55,7 @@ class QueryStats(object):
         self.text = text
         self.params = params_dict
         self.params_id = None
-        self.stack = stack
+        self.stack = self.stack_text = stack
         self.start_time = start_time
         self.end_time = end_time
         self.duration = end_time - start_time
@@ -170,9 +170,9 @@ class ProfilingSession(object):
         start_time = getattr(conn, '_sqltap_query_start_time', end_time)
 
         # get the user's context
-        context = (None if not self.user_context_fn else
-                   self.user_context_fn(conn, clause,
-                                        multiparams, params, results))
+        context = (None if not self.user_context_fn
+                   else self.user_context_fn(
+                        conn, clause, multiparams, params, results))
 
         try:
             text = clause.compile(dialect=conn.engine.dialect)
@@ -293,19 +293,23 @@ class QueryGroup(object):
         self.stacks[q.stack_text] += 1
         self.callers[q.stack_text] = self.find_user_fn(q.stack)
 
-        count, params_id, params = self.params_hashes.get(
-            q.params_hash, (0, None, q.params))
-        if params_id is None:
-            self.__class__.ParamsID += 1
-            params_id = self.ParamsID
-        self.params_hashes[q.params_hash] = (count + 1, params_id, params)
-        q.params_id = q.params_id or params_id
-
         self.max = max(self.max, q.duration)
         self.min = min(self.min, q.duration)
         self.sum += q.duration
         self.rowcounts += q.rowcount
         self.mean = self.sum / len(self.queries)
+
+        self.add_params(q)
+
+    def add_params(self, q):
+        key = (hash(q.text), hash(q.stack_text), q.params_hash)
+        count, params_id, params = self.params_hashes.get(
+            key, (0, None, q.params))
+        if params_id is None:
+            self.__class__.ParamsID += 1
+            params_id = self.ParamsID
+        self.params_hashes[key] = (count + 1, params_id, params)
+        q.params_id = q.params_id or params_id
 
     def calc_median(self):
         queries = sorted(self.queries, key=lambda q: q.duration,
