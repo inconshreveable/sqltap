@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import collections
+
 from sqlalchemy import *  # noqa
 from sqlalchemy.orm import *  # noqa
 from sqlalchemy.ext.declarative import declarative_base
@@ -171,9 +173,7 @@ class TestSQLTap(object):
         directors_query = 'SELECT * FROM movies WHERE director=:name'
         jones = {'name': 'Terry Jones'}
         gilliam = {'name': 'Terry Gilliam'}
-        query_groups = dict(stack1=sqltap.QueryGroup(),
-                      stack2=sqltap.QueryGroup(),
-                      stack9=sqltap.QueryGroup())
+        query_groups = collections.defaultdict(sqltap.QueryGroup)
         all_group = sqltap.QueryGroup()
 
         def add(query, params, stack, rowcount, start=1, end=2):
