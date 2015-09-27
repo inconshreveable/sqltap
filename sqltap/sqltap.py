@@ -61,9 +61,10 @@ class QueryStats(object):
         self.duration = end_time - start_time
         self.user_context = user_context
         self.rowcount = results.rowcount
-        self.params_hash = self._calculate_params_hash(self.params)
+        self.params_hash = self.calculate_params_hash(self.params)
 
-    def _calculate_params_hash(self, params):
+    @classmethod
+    def calculate_params_hash(cls, params):
         h = 0
         for k in sorted(params.keys()):
             h ^= 10009 * hash(params[k])
@@ -302,7 +303,7 @@ class QueryGroup(object):
         self.add_params(q)
 
     def add_params(self, q):
-        key = (hash(q.text), hash(q.stack_text), q.params_hash)
+        key = (hash(q.text), q.params_hash)
         count, params_id, params = self.params_hashes.get(
             key, (0, None, q.params))
         if params_id is None:

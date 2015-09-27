@@ -41,6 +41,10 @@ class TestSQLTap(object):
 
         self.Session = sessionmaker(bind=self.engine)
 
+    def assertEqual(self, expected, actual, message=None):
+        message = message or "{0!r} == {1!r}".format(expected, actual)
+        assert expected == actual, message
+
     def test_insert(self):
         """ Simple test that sqltap collects an insert query. """
         profiler = sqltap.start(self.engine)
@@ -160,19 +164,41 @@ class TestSQLTap(object):
 
         assert len(profiler.collect()) == 1
 
-    def test_querygroup_add_params(self):
+    def test_querygroup_add_params_no_dup(self):
+        """Ensure that two identical parameter sets, belonging to different queries,
+        are treated as separate."""
+        python_query = 'SELECT * FROM pythons WHERE name=:name'
+        directors_query = 'SELECT * FROM movies WHERE director=:name'
+        jones = {'name': 'Terry Jones'}
+        gilliam = {'name': 'Terry Gilliam'}
         group = sqltap.QueryGroup()
-        qstats1 = sqltap.QueryStats(
-            'SELECT * from pythons where name=:name', 'stack1', 1, 2, None,
-            {'name': 'Terry Jones'}, MockResults(1))
-        qstats2 = sqltap.QueryStats(
-            'SELECT * from movies where director=:name', 'stack1', 3, 4, None,
-            {'name': 'Terry Jones'}, MockResults(4))
-        print(qstats1)
-        print(qstats2)
-        group.add(qstats1)
-        group.add(qstats2)
-        assert 2 == len(group.params_hashes)
+        group.add(sqltap.QueryStats(
+            python_query, 'stack1', 1, 2, None, jones, MockResults(1)))
+        group.add(sqltap.QueryStats(
+            directors_query, 'stack2', 3, 4, None, jones, MockResults(4)))
+        group.add(sqltap.QueryStats(
+            python_query, 'stack1', 1, 2, None, gilliam, MockResults(1)))
+        group.add(sqltap.QueryStats(
+            directors_query, 'stack2', 3, 4, None, gilliam, MockResults(12)))
+        group.add(sqltap.QueryStats(
+            python_query, 'stack1', 1, 2, None, gilliam, MockResults(1)))
+        group.add(sqltap.QueryStats(
+            directors_query, 'stack9', 3, 4, None, gilliam, MockResults(12)))
+
+        self.assertEqual(3, len(group.stacks))
+        self.assertEqual({1, 2, 3}, set(group.stacks.values()))
+
+        self.assertEqual(4, len(group.params_hashes))
+        gilliam_movie_queries = group.params_hashes[
+            (hash(directors_query),
+             sqltap.QueryStats.calculate_params_hash(gilliam))]
+        jones_movie_queries = group.params_hashes[
+            (hash(directors_query),
+             sqltap.QueryStats.calculate_params_hash(jones))]
+        self.assertEqual(1, jones_movie_queries[0])
+        self.assertEqual(jones, jones_movie_queries[2])
+        self.assertEqual(2, gilliam_movie_queries[0])
+        self.assertEqual(gilliam, gilliam_movie_queries[2])
 
     def test_report(self):
         profiler = sqltap.start(self.engine)
