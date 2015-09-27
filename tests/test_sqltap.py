@@ -171,28 +171,38 @@ class TestSQLTap(object):
         directors_query = 'SELECT * FROM movies WHERE director=:name'
         jones = {'name': 'Terry Jones'}
         gilliam = {'name': 'Terry Gilliam'}
-        group = sqltap.QueryGroup()
-        group.add(sqltap.QueryStats(
-            python_query, 'stack1', 1, 2, None, jones, MockResults(1)))
-        group.add(sqltap.QueryStats(
-            directors_query, 'stack2', 3, 4, None, jones, MockResults(4)))
-        group.add(sqltap.QueryStats(
-            python_query, 'stack1', 1, 2, None, gilliam, MockResults(1)))
-        group.add(sqltap.QueryStats(
-            directors_query, 'stack2', 3, 4, None, gilliam, MockResults(12)))
-        group.add(sqltap.QueryStats(
-            python_query, 'stack1', 1, 2, None, gilliam, MockResults(1)))
-        group.add(sqltap.QueryStats(
-            directors_query, 'stack9', 3, 4, None, gilliam, MockResults(12)))
+        query_groups = dict(stack1=sqltap.QueryGroup(),
+                      stack2=sqltap.QueryGroup(),
+                      stack9=sqltap.QueryGroup())
+        all_group = sqltap.QueryGroup()
 
-        self.assertEqual(3, len(group.stacks))
-        self.assertEqual(set([1, 2, 3]), set(group.stacks.values()))
+        def add(query, params, stack, rowcount, start=1, end=2):
+            stats = sqltap.QueryStats(query, stack, start, end, None,
+                                      params, MockResults(rowcount))
+            query_groups[stack].add(stats)
+            all_group.add(stats)
+            return stats
 
-        self.assertEqual(4, len(group.params_hashes))
-        gilliam_movie_queries = group.params_hashes[
+        add(python_query, jones, 'stack1', 1)
+        add(directors_query, jones, 'stack2', 4)
+        add(python_query, gilliam, 'stack1', 1)
+        add(directors_query, gilliam, 'stack2', 12)
+        add(python_query, gilliam, 'stack1', 1)
+        add(directors_query, gilliam, 'stack9', 12)
+
+        self.assertEqual(1 + 1 + 1, query_groups['stack1'].rowcounts)
+        self.assertEqual(4 + 12, query_groups['stack2'].rowcounts)
+        self.assertEqual(12, query_groups['stack9'].rowcounts)
+        self.assertEqual((1 + 1 + 1) + (4 + 12) + 12, all_group.rowcounts)
+
+        self.assertEqual(3, len(all_group.stacks))
+        self.assertEqual(set([1, 2, 3]), set(all_group.stacks.values()))
+
+        self.assertEqual(4, len(all_group.params_hashes))
+        gilliam_movie_queries = all_group.params_hashes[
             (hash(directors_query),
              sqltap.QueryStats.calculate_params_hash(gilliam))]
-        jones_movie_queries = group.params_hashes[
+        jones_movie_queries = all_group.params_hashes[
             (hash(directors_query),
              sqltap.QueryStats.calculate_params_hash(jones))]
         self.assertEqual(1, jones_movie_queries[0])
