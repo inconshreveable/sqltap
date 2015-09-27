@@ -186,7 +186,7 @@ class TestSQLTap(object):
             directors_query, 'stack9', 3, 4, None, gilliam, MockResults(12)))
 
         self.assertEqual(3, len(group.stacks))
-        self.assertEqual({1, 2, 3}, set(group.stacks.values()))
+        self.assertEqual(set([1, 2, 3]), set(group.stacks.values()))
 
         self.assertEqual(4, len(group.params_hashes))
         gilliam_movie_queries = group.params_hashes[
