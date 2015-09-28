@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import collections
+
 from sqlalchemy import *  # noqa
 from sqlalchemy.orm import *  # noqa
 from sqlalchemy.ext.declarative import declarative_base
@@ -20,6 +22,11 @@ def _startswith(qs, text):
     return list(filter(lambda q: str(q.text).strip().startswith(text), qs))
 
 
+class MockResults(object):
+    def __init__(self, rowcount):
+        self.rowcount = rowcount
+
+
 class TestSQLTap(object):
 
     def setUp(self):
@@ -35,6 +42,10 @@ class TestSQLTap(object):
         Base.metadata.create_all(self.engine)
 
         self.Session = sessionmaker(bind=self.engine)
+
+    def assertEqual(self, expected, actual, message=None):
+        message = message or "{0!r} == {1!r}".format(expected, actual)
+        assert expected == actual, message
 
     def test_insert(self):
         """ Simple test that sqltap collects an insert query. """
@@ -155,12 +166,56 @@ class TestSQLTap(object):
 
         assert len(profiler.collect()) == 1
 
+    def test_querygroup_add_params_no_dup(self):
+        """Ensure that two identical parameter sets, belonging to different queries,
+        are treated as separate."""
+        python_query = 'SELECT * FROM pythons WHERE name=:name'
+        directors_query = 'SELECT * FROM movies WHERE director=:name'
+        jones = {'name': 'Terry Jones'}
+        gilliam = {'name': 'Terry Gilliam'}
+        query_groups = collections.defaultdict(sqltap.QueryGroup)
+        all_group = sqltap.QueryGroup()
+
+        def add(query, params, stack, rowcount, start=1, end=2):
+            stats = sqltap.QueryStats(query, stack, start, end, None,
+                                      params, MockResults(rowcount))
+            query_groups[stack].add(stats)
+            all_group.add(stats)
+            return stats
+
+        add(python_query, jones, 'stack1', 1)
+        add(directors_query, jones, 'stack2', 4)
+        add(python_query, gilliam, 'stack1', 1)
+        add(directors_query, gilliam, 'stack2', 12)
+        add(python_query, gilliam, 'stack1', 1)
+        add(directors_query, gilliam, 'stack9', 12)
+
+        self.assertEqual(1 + 1 + 1, query_groups['stack1'].rowcounts)
+        self.assertEqual(4 + 12, query_groups['stack2'].rowcounts)
+        self.assertEqual(12, query_groups['stack9'].rowcounts)
+        self.assertEqual((1 + 1 + 1) + (4 + 12) + 12, all_group.rowcounts)
+
+        self.assertEqual(3, len(all_group.stacks))
+        self.assertEqual(set([1, 2, 3]), set(all_group.stacks.values()))
+
+        self.assertEqual(4, len(all_group.params_hashes))
+        gilliam_movie_queries = all_group.params_hashes[
+            (hash(directors_query),
+             sqltap.QueryStats.calculate_params_hash(gilliam))]
+        jones_movie_queries = all_group.params_hashes[
+            (hash(directors_query),
+             sqltap.QueryStats.calculate_params_hash(jones))]
+        self.assertEqual(1, jones_movie_queries[0])
+        self.assertEqual(jones, jones_movie_queries[2])
+        self.assertEqual(2, gilliam_movie_queries[0])
+        self.assertEqual(gilliam, gilliam_movie_queries[2])
+
     def test_report(self):
         profiler = sqltap.start(self.engine)
 
         sess = self.Session()
         q = sess.query(self.A)
-        qtext = str(q)
+        qtext = sqltap.format_sql(str(q))
         q.all()
 
         stats = profiler.collect()
@@ -183,7 +238,7 @@ class TestSQLTap(object):
         stats = profiler.collect()
         report = sqltap.report(stats, report_format="html")
         assert REPORT_TITLE in report
-        assert sql in report
+        assert sqltap.format_sql(sql) in report
         report = sqltap.report(stats, report_format="text")
         assert REPORT_TITLE in report
         assert sqlparse.format(sql, reindent=True) in report

@@ -1,6 +1,3 @@
-<%!
-    import sqlparse
-%>
 ========================================================================
 ${"======{TITLE: ^60}======".format(TITLE=report_title)}
 ========================================================================
@@ -11,6 +8,7 @@ ${"======{0: ^60}======".format("Summary")}
 ========================================================================
 Total queries: ${len(all_group.queries)}
 Total time: ${'%.2f' % all_group.sum} second(s)
+Total profiling time: ${'%.2f' % duration} second(s)
 
 ========================================================================
 ${"======{0: ^60}======".format("Details")}
@@ -26,14 +24,7 @@ Query mean time: ${'%.3f' % group.mean} second(s)
 Query median time: ${'%.3f' % group.median} second(s)
 
 ${"------------{0: ^48}------------".format("QueryGroup %d SQL pattern" % i)}
-<%
-    def format_sql(sql):
-        try:
-            return sqlparse.format(sql, reindent=True)
-        except Exception:
-            return sql
-%>
-${format_sql(group.text)}
+${group.formatted_text}
 
 ${"------------{0: ^48}------------".format("QueryGroup %d breakdown" % i)}
 % for j, query in enumerate(reversed(group.queries)):
@@ -43,6 +34,7 @@ ${"Query %d:" % j}
     % for key, value in query.params.items():
     ${key}: ${value}
     % endfor
+  Query rowcount: ${'%d' % query.rowcount}
 % endfor ## end for j, query in enumerate(reversed(group.queries))
 
 ${"------------{0: ^48}------------".format("QueryGroup %d stacks" % i)}

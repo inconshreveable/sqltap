@@ -10,11 +10,10 @@
     <title>${report_title}</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- syntax highlighting -->
-    <link href="http://yandex.st/highlightjs/8.0/styles/default.min.css" rel="stylesheet">
-    <script src="http://yandex.st/highlightjs/8.0/highlight.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.8.0/styles/default.min.css" rel="stylesheet">
     <style type="text/css">
       body { padding-top: 60px; }
       #query-groups {
@@ -43,6 +42,7 @@
           <p id="total-time" class="navbar-text">
             <span class="count">${len(all_group.queries)}</span> queries spent
             <span class="sum">${'%.2f' % all_group.sum}</span> seconds
+            over <span class="sum">${'%.2f' % duration}</span> seconds of profiling
           </p>
           <%block name="header_extra"></%block>
         </div>
@@ -56,9 +56,15 @@
             % for i, group in enumerate(query_groups):
             <li class="${'active' if i==0 else ''}">
               <a href="#query-${i}" data-toggle="tab">
-                <span class="label label-warning pull-right">${'%.3f' % group.sum}s</span>
-                <span class="label label-info pull-right" style="margin-right: 5px">
-                  ${len(group.queries)}
+                <span class="label label-default pull-right"
+                      style="margin-right: 5px; width: 8ex; text-align: right;">
+                    ${group.rowcounts}r
+                </span>
+                <span class="label label-warning pull-right" style="margin-right: 5px;">
+                    ${'%.3f' % group.sum}s
+                </span>
+                <span class="label label-info pull-right" style="margin-right: 5px;">
+                  ${len(group.queries)}q
                 </span>
 ${group.first_word}
               </a>
@@ -66,7 +72,15 @@ ${group.first_word}
           % endfor
           </ul>
 
+          <hr />
+
+            <div>
+            <span>Report Generated: ${report_time}</span>
+          </div>
         </div>
+
+        <!-- ================================================== -->
+
         <div class="col-xs-9">
 
           <div class="tab-content">
@@ -75,8 +89,16 @@ ${group.first_word}
               <h4 class="toggle">
                   <ul class="list-inline">
                     <li>
-                      <dt>Count</dt>
+                      <dt>Query Count</dt>
                       <dd>${len(group.queries)}</dd>
+                    </li>
+                    <li>
+                      <dt>Row Count</dt>
+                      <dd>${'%d' % group.rowcounts}</dd>
+                    </li>
+                    <li>
+                      <dt>Total Time</dt>
+                      <dd>${'%.3f' % group.sum}</dd>
                     </li>
                     <li>
                       <dt>Mean</dt>
@@ -98,7 +120,7 @@ ${group.first_word}
               </h4>
 
               <hr />
-              <pre><code>${group.text}</code></pre>
+              <pre><code class="sql">${group.formatted_text}</code></pre>
               <hr />
 
               <%
@@ -113,18 +135,51 @@ ${group.first_word}
                 % for param_name in params:
                   <th><code>${param_name}</code></th>
                 % endfor
+                  <th>Row Count</th>
+                  <th>Params ID</th>
                 </tr>
                 % for idx, query in enumerate(reversed(group.queries)):
                 <tr class="${'hidden' if idx >= 3 else ''}">
                     <td>${'%.3f' % query.duration}</td>
                     % for param_name in params:
-                    <td>${query.text.params[param_name]}</td>
+                    <td>${query.params[param_name]}</td>
                     % endfor
+                    <td>${'%d' % query.rowcount}</td>
+                    <td>${'%d' % query.params_id}</td>
                 </tr>
                 % endfor
               </table>
               % if len(group.queries) > 3:
                 <a href="#" class="morequeries">show ${len(group.queries)-3} older queries</a>
+              % endif
+
+              <hr />
+              <% params_hash_count = len(group.params_hashes) %>
+              <h4>
+                  ${params_hash_count} unique parameter
+                  % if params_hash_count == 1:
+                      set is
+                  % else:
+                      sets are
+                  % endif
+                  supplied.
+              </h4>
+              <ul class="details">
+                % for idx, (count, params_id, params) in enumerate(group.params_hashes.values()):
+                  <li class="${'hidden' if idx >= 3 else ''}">
+                    <h5>
+                      ${count}
+                      ${'call' if count == 1 else 'calls'}
+                      (Params ID: ${params_id}) with
+                      <tt>
+                        ${", ".join(["%s=%r" % (k,params[k]) for k in sorted(params.keys()) if params[k] is not None])}
+                      </tt>
+                    </h5>
+                  </li>
+                % endfor
+              </ul>
+              % if len(group.params_hashes) > 3:
+                  <a href="#" class="moreparams">show ${len(group.params_hashes)-3} more parameter sets</a>
               % endif
 
               <hr />
@@ -149,7 +204,7 @@ ${group.first_word}
                       <strong>${fr[2]}</strong> @${fr[0].split()[-1]}:${fr[1]}
                       </h5>
                     </a>
-                    <pre class="trace hidden">${trace}</pre>
+                    <pre class="trace hidden"><code class="python">${trace}</code></pre>
                   </li>
                   % endfor
               </ul>
@@ -164,8 +219,8 @@ ${group.first_word}
 
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-    <script src="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.8.0/highlight.min.js"></script>
     <script>hljs.initHighlightingOnLoad();</script>
     <script type="text/javascript">
         jQuery(function($) {
@@ -180,6 +235,11 @@ ${group.first_word}
                 e.preventDefault();
                 $(this).hide();
                 $(this).prev("table").find("tr.hidden").removeClass("hidden");
+            });
+            $(".moreparams").click(function(e) {
+                e.preventDefault();
+                $(this).hide();
+                $(this).prev("ul").find("li.hidden").removeClass("hidden");
             });
         });
     </script>
