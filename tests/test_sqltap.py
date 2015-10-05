@@ -1,5 +1,8 @@
+# -*- encoding: utf8 -*-
 from __future__ import print_function
 
+import os
+import tempfile
 import collections
 
 from sqlalchemy import *  # noqa
@@ -37,6 +40,7 @@ class TestSQLTap(object):
         class A(Base):
             __tablename__ = "a"
             id = Column("id", Integer, primary_key=True)
+            name = Column("name", String)
         self.A = A
 
         Base.metadata.create_all(self.engine)
@@ -210,6 +214,17 @@ class TestSQLTap(object):
         self.assertEqual(2, gilliam_movie_queries[0])
         self.assertEqual(gilliam, gilliam_movie_queries[2])
 
+    def test_query_stats_with_no_hashable_params(self):
+        """Regression test for when sql query params contain un-hashable python
+        object e.g. Postgres ARRAY -> list.
+        """
+        params = {'tags': ['programming', 'python', 'sqla']}
+
+        self.assertEqual(
+            sqltap.QueryStats.calculate_params_hash(params),
+            sqltap.QueryStats.calculate_params_hash(params),
+        )
+
     def test_report(self):
         profiler = sqltap.start(self.engine)
 
@@ -226,6 +241,21 @@ class TestSQLTap(object):
         assert REPORT_TITLE in report
         assert sqlparse.format(qtext, reindent=True) in report
         profiler.stop()
+
+    def test_report_to_file(self):
+        profiler = sqltap.start(self.engine)
+
+        sess = self.Session()
+        q = sess.query(self.A).filter(self.A.name == u"معاذ")
+        q.all()
+        stats = profiler.collect()
+
+        fd, temp_path = tempfile.mkstemp()
+        os.close(fd)
+        report = sqltap.report(stats, filename=temp_path)
+
+        with open(temp_path) as fp:
+            self.assertEqual(report, fp.read())
 
     def test_report_raw_sql(self):
         """ Ensure that reporting works when raw SQL queries were emitted. """

@@ -23,6 +23,8 @@ REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
 REPORT_TEXT = "text"
 
+PY2 = sys.version_info[0] == 2
+
 
 def format_sql(sql):
     try:
@@ -67,7 +69,10 @@ class QueryStats(object):
     def calculate_params_hash(cls, params):
         h = 0
         for k in sorted(params.keys()):
-            h ^= 10009 * hash(params[k])
+            # Calculate hash using value representation, to accommodate when
+            # values are unhashable object, repr may yield incorrect results
+            # (e.g. '[1]' vs [1]) but it's good compromise of simple and fast.
+            h ^= 10009 * hash(repr(params[k]))
         return (h ^ (h >> 32)) & ((1 << 32) - 1)  # convert to 32-bit unsigned
 
     def __repr__(self):
@@ -377,6 +382,8 @@ class Reporter(object):
 
         if self.report_file:
             report_file = os.path.join(self.report_dir, self.report_file)
+            if PY2:
+                content = content.encode('utf8')
             with open(report_file, log_mode) as f:
                 f.write(content)
 
