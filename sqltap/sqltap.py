@@ -23,7 +23,7 @@ REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
 REPORT_TEXT = "text"
 
-PY2 = sys.version_info[0] == 2
+_py2 = sys.version_info[0] == 2
 
 
 def format_sql(sql):
@@ -382,7 +382,7 @@ class Reporter(object):
 
         if self.report_file:
             report_file = os.path.join(self.report_dir, self.report_file)
-            if PY2:
+            if _py2:
                 content = content.encode('utf8')
             with open(report_file, log_mode) as f:
                 f.write(content)
