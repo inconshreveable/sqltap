@@ -8,7 +8,7 @@ install:
   - python setup.py develop
   - pip install flake8
 script:
-  - flake8 --ignore=H302,H306,H402,H404,H405,H904,E126,E128,C901
+  - flake8 --ignore=H302,H306,H402,H404,H405,H904,E126,E128,C901,F405
            --show-source
            --builtins=_
            --max-line-length=79
