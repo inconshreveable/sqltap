@@ -85,11 +85,11 @@ SQLTap provides text profiling report in a human-readable way.
         sqltap.report(all_stats, "report_all.html")
 
         # a report per page
-        for page, stats:
+        for page, stats in per_page_stats.items():
             sqltap.report(stats, "report_page_%s.html" % page)
 
         # a report per request
-        for request_id, stats:
+        for request_id, stats in per_request_stats.items():
             sqltap.report(stats, "report_request_%s.html" % request_id)
 
 ## Testing
