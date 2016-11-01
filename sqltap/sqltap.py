@@ -329,7 +329,10 @@ class QueryGroup(object):
             self.median = queries[length // 2].duration
 
     def get_param_names(self):
-        """Aggregate param names from all queries in the group and return as an ordered list."""
+        """
+        Aggregate param names from all queries in the group
+        and return as an ordered list.
+        """
         names = set()
         for query in self.queries:
             names |= set(query.params.keys())

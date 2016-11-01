@@ -348,7 +348,8 @@ class TestSQLTap(object):
 
     def test_report_aggregation_w_different_param_sets(self):
         """
-        Test that report rendering works with groups of queries containing different parameter sets
+        Test that report rendering works with groups of queries
+        containing different parameter sets
         """
 
         sess = self.Session()
