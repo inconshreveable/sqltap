@@ -4,6 +4,7 @@ from __future__ import print_function
 import os
 import tempfile
 import collections
+import uuid
 
 from sqlalchemy import *  # noqa
 from sqlalchemy.orm import *  # noqa
@@ -41,11 +42,20 @@ class TestSQLTap(object):
             __tablename__ = "a"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String)
+            description = Column("description", String)
         self.A = A
 
         Base.metadata.create_all(self.engine)
 
         self.Session = sessionmaker(bind=self.engine)
+
+    def check_report(self, report):
+        """
+        Check whether the SQL report was actually rendered.
+        If the report fails, then a Mako error report is generated instead
+        with `Mako Runtime Error` in its title.
+        """
+        assert REPORT_TITLE in report
 
     def assertEqual(self, expected, actual, message=None):
         message = message or "{0!r} == {1!r}".format(expected, actual)
@@ -335,6 +345,34 @@ class TestSQLTap(object):
         assert '2 unique' in report
         assert '<dd>10</dd>' in report
         profiler.stop()
+
+    def test_report_aggregation_w_different_param_sets(self):
+        """
+        Test that report rendering works with groups of queries
+        containing different parameter sets
+        """
+
+        sess = self.Session()
+
+        a1 = self.A(name=uuid.uuid4().hex, description='')
+        a2 = self.A(name=uuid.uuid4().hex, description='')
+        sess.add_all([a1, a2])
+        sess.commit()
+
+        a1 = sess.query(self.A).get(a1.id)
+        a2 = sess.query(self.A).get(a2.id)
+
+        profiler = sqltap.start(self.engine)
+        # this will create queries with the same text, but different param sets
+        # (different query.params.keys() collections)
+        a1.name = uuid.uuid4().hex
+        a2.description = uuid.uuid4().hex
+        sess.flush()
+
+        report = sqltap.report(profiler.collect())
+        print(report)
+        profiler.stop()
+        self.check_report(report)
 
     def test_start_stop(self):
         sess = self.Session()

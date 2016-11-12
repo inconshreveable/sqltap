@@ -124,7 +124,7 @@ ${group.first_word}
               <hr />
 
               <%
-                params = group.queries[0].params.keys()
+                params = group.get_param_names()
               %>
               <h4>
                 Query Breakdown
@@ -142,7 +142,7 @@ ${group.first_word}
                 <tr class="${'hidden' if idx >= 3 else ''}">
                     <td>${'%.3f' % query.duration}</td>
                     % for param_name in params:
-                    <td>${query.params[param_name]}</td>
+                    <td>${query.params.get(param_name, '')}</td>
                     % endfor
                     <td>${'%d' % query.rowcount}</td>
                     <td>${'%d' % query.params_id}</td>
