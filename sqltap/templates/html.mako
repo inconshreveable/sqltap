@@ -142,7 +142,9 @@ ${group.first_word}
                 <tr class="${'hidden' if idx >= 3 else ''}">
                     <td>${'%.3f' % query.duration}</td>
                     % for param_name in params:
-                    <td>${query.params.get(param_name, '')}</td>
+                    % if param_name in query.params:
+                    <td>${query.params[param_name]}</td>
+                    % endif
                     % endfor
                     <td>${'%d' % query.rowcount}</td>
                     <td>${'%d' % query.params_id}</td>
