@@ -36,7 +36,7 @@
             <a class="navbar-brand" href="https://github.com/inconshreveable/sqltap">sqltap</a>
           </div>
           <ul class="navbar-right nav navbar-nav">
-            <li><a target="_blank" href="http://sqltap.inconshreveable.com/">Documentation</a></li>
+            <li><a target="_blank" href="https://sqltap.inconshreveable.com/">Documentation</a></li>
             <li><a target="_blank" href="https://github.com/inconshreveable/sqltap">Code</a></li>
           </ul>
           <p id="total-time" class="navbar-text">
