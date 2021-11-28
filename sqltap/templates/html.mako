@@ -18,6 +18,9 @@
       body { padding-top: 60px; }
       #query-groups {
         border-right: 1px solid #ccc;
+        min-height: 600px;
+        max-height: calc(100vh - 100px);
+        overflow-y: scroll;
       }
       #total-time { color: #fff; }
       #total-time .sum { color: #0f0; font-size: 16px; }
@@ -50,7 +53,7 @@
       <h1>
       </h1>
       <div class="row">
-        <div class="col-xs-3" id="query-groups" style="min-height: 600px">
+        <div class="col-xs-3" id="query-groups">
 
           <ul class="nav nav-pills nav-stacked" id="myTabs">
             % for i, group in enumerate(query_groups):
