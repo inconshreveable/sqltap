@@ -13,83 +13,117 @@
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- syntax highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.8.0/styles/default.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/vs.min.css">
+
     <style type="text/css">
-      body { padding-top: 60px; }
-      #query-groups {
-        border-right: 1px solid #ccc;
-        min-height: 600px;
-        max-height: calc(100vh - 100px);
-        overflow-y: scroll;
+      body { 
+        padding-top: 60px;
+        overflow-y: hidden;
       }
+      #query-groups {
+        border-right: 1px solid #eee;
+        height: calc(100vh - 54px);
+        display: flex;
+        flex-direction: column;
+        padding: 0px;
+        width: 320px;
+        max-width: 320px;
+        min-width: 320px;
+      }
+
       #total-time { color: #fff; }
       #total-time .sum { color: #0f0; font-size: 16px; }
       #total-time .count { color: #0f0; font-size: 16px; }
       a.toggle { cursor: pointer }
       a.toggle strong { color: red; }
+
+      .nav-list-item {
+        border-bottom: 1px solid #eee;
+        margin-top: 0px !important;
+      }
+
+      .nav-pills>li.active>a {
+        background-color: #337ab7;
+        border-radius: 0px;
+      }
+
+      #myTabs {
+        flex-grow: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .query-info-container {
+        padding-left: 12px;
+        padding-right: 12px;
+        flex-grow: 1;
+        overflow-y: scroll;
+        height: calc(100vh - 54px);
+      }
     </style>
   </head>
 
   <body>
-
-    <div class="container">
-      <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-        <div class="container">
-          <div class="navbar-header">
-            <a class="navbar-brand" href="https://github.com/inconshreveable/sqltap">sqltap</a>
-          </div>
-          <ul class="navbar-right nav navbar-nav">
-            <li><a target="_blank" href="https://sqltap.inconshreveable.com/">Documentation</a></li>
-            <li><a target="_blank" href="https://github.com/inconshreveable/sqltap">Code</a></li>
-          </ul>
-          <p id="total-time" class="navbar-text">
-            <span class="count">${len(all_group.queries)}</span> queries spent
-            <span class="sum">${'%.2f' % all_group.sum}</span> seconds
-            over <span class="sum">${'%.2f' % duration}</span> seconds of profiling
-          </p>
-          <%block name="header_extra"></%block>
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="https://github.com/inconshreveable/sqltap">sqltap</a>
         </div>
+        <ul class="navbar-right nav navbar-nav">
+          <li><a target="_blank" href="http://sqltap.inconshreveable.com/">Documentation</a></li>
+          <li><a target="_blank" href="https://github.com/inconshreveable/sqltap">Code</a></li>
+        </ul>
+        <p id="total-time" class="navbar-text">
+          <span class="count">${len(all_group.queries)}</span> queries spent
+          <span class="sum">${'%.2f' % all_group.sum}</span> seconds
+          over <span class="sum">${'%.2f' % duration}</span> seconds of profiling
+        </p>
+        <%block name="header_extra"></%block>
       </div>
-      <h1>
-      </h1>
-      <div class="row">
-        <div class="col-xs-3" id="query-groups">
+    </div>
+
+    <div class="" style="margin-top: -3px; overflow-x: hidden; display: flex;">
+
+        <div id="query-groups">
 
           <ul class="nav nav-pills nav-stacked" id="myTabs">
             % for i, group in enumerate(query_groups):
-            <li class="${'active' if i==0 else ''}">
+            <li class="nav-list-item ${'active' if i==0 else ''}">
               <a href="#query-${i}" data-toggle="tab">
-                <span class="label label-default pull-right"
-                      style="margin-right: 5px; width: 8ex; text-align: right;">
-                    ${group.rowcounts}r
-                </span>
-                <span class="label label-warning pull-right" style="margin-right: 5px;">
-                    ${'%.3f' % group.sum}s
-                </span>
-                <span class="label label-info pull-right" style="margin-right: 5px;">
-                  ${len(group.queries)}q
-                </span>
-${group.first_word}
+                <div style="display: flex; flex-wrap: wrap;">
+                    <div style="width: 100%; font-weight: 700;">
+                      ${group.first_word}
+                    </div>
+                    <div style="width: 100%;">
+                      <span class="label label-warning" style="margin-right: 5px; background-color: #1A237E;">
+                          Time: ${'%.3f' % group.sum}s
+                      </span>
+                      <span class="label label-default" style="margin-right: 5px; text-align: right; background-color: #1a557e;">
+                          Rows: ${group.rowcounts}
+                      </span>
+                      <span class="label label-info" style="margin-right: 5px; background-color: #431a7e;">
+                          Queries: ${len(group.queries)}
+                      </span>
+                    </div>
+                </div>
               </a>
             </li>
           % endfor
           </ul>
 
-          <hr />
-
-            <div>
+          <div style="background-color: #cacaca; text-align: center; font-weight: 500;">
             <span>Report Generated: ${report_time}</span>
           </div>
         </div>
 
         <!-- ================================================== -->
 
-        <div class="col-xs-9">
+        <div class="query-info-container">
 
           <div class="tab-content">
             % for i, group in enumerate(query_groups):
             <div id="query-${i}" class="tab-pane ${'active' if i==0 else ''}">
-              <h4 class="toggle">
+              <h4 class="toggle" style="margin-top: 0px;">
                   <ul class="list-inline">
                     <li>
                       <dt>Query Count</dt>
@@ -123,7 +157,7 @@ ${group.first_word}
               </h4>
 
               <hr />
-              <pre><code class="sql">${group.formatted_text}</code></pre>
+              <pre><code class="language-sql">${group.formatted_text}</code></pre>
               <hr />
 
               <%
@@ -187,7 +221,7 @@ ${group.first_word}
 
               <hr />
               <% stack_count = len(group.stacks) %>
-              <h4>
+              <h4 id="trace-details-title">
                   ${stack_count} unique
                   % if stack_count == 1:
                       stack issues
@@ -196,7 +230,7 @@ ${group.first_word}
                   % endif
                   this query
               </h4>
-              <ul class="details">
+              <ul class="details" id="trace-details">
                   % for trace, count in group.stacks.items():
                   <li>
                     <a class="toggle">
@@ -217,18 +251,20 @@ ${group.first_word}
 
             % endfor
           </div>
-        </div>
     </div><!-- /.container -->
 
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.8.0/highlight.min.js"></script>
-    <script>hljs.initHighlightingOnLoad();</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/highlight.min.js"></script>
+
     <script type="text/javascript">
         jQuery(function($) {
+            hljs.highlightAll();
+
             $(".toggle").click(function() {
-                $(this).siblings(".trace").toggleClass("hidden");
+              $(this).siblings(".trace").toggleClass("hidden")
+              $("#trace-details-title")[0].scrollIntoView({behavior: "smooth"});
             });
             $('#myTabs a').click(function (e) {
                 $(this).tab('show');
