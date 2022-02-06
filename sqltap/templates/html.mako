@@ -17,7 +17,6 @@
 
     <style type="text/css">
       body { 
-        padding-top: 60px;
         overflow-y: hidden;
       }
       #query-groups {
@@ -64,7 +63,7 @@
   </head>
 
   <body>
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <div class="navbar navbar-inverse" style="border-radius: 0px; margin-bottom: 0px;" role="navigation">
       <div class="container">
         <div class="navbar-header">
           <a class="navbar-brand" href="https://github.com/inconshreveable/sqltap">sqltap</a>
@@ -82,7 +81,7 @@
       </div>
     </div>
 
-    <div class="" style="margin-top: -3px; overflow-x: hidden; display: flex;">
+    <div class="" style="overflow-x: hidden; display: flex;">
 
         <div id="query-groups">
 
@@ -208,9 +207,9 @@
                       ${count}
                       ${'call' if count == 1 else 'calls'}
                       (Params ID: ${params_id}) with
-                      <tt>
+                      <code class="language-sql">
                         ${", ".join(["%s=%r" % (k,params[k]) for k in sorted(params.keys()) if params[k] is not None])}
-                      </tt>
+                      </code>
                     </h5>
                   </li>
                 % endfor
