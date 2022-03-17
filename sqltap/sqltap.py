@@ -165,11 +165,11 @@ class ProfilingSession(object):
             self.collector = queue.Queue(0)
             self.collect_fn = self.collector.put
 
-    def _before_exec(self, conn, clause, multiparams, params):
+    def _before_exec(self, conn, clause, multiparams, params, execution_options):
         """ SQLAlchemy event hook """
         conn._sqltap_query_start_time = time.time()
 
-    def _after_exec(self, conn, clause, multiparams, params, results):
+    def _after_exec(self, conn, clause, multiparams, params, execution_options, results):
         """ SQLAlchemy event hook """
         # calculate the query time
         end_time = time.time()

@@ -5,6 +5,7 @@ import collections
 import os
 import tempfile
 import uuid
+import warnings
 
 import nose.tools
 import sqlalchemy.event
@@ -13,10 +14,12 @@ from sqlalchemy import Column, Integer, String, Unicode, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import Client
-from werkzeug.wrappers import BaseResponse
+from werkzeug.wrappers import Response
 
 import sqltap
 import sqltap.wsgi
+
+warnings.simplefilter(os.environ.get('WARNING_ACTION', 'error'))
 
 REPORT_TITLE = "SQLTap Profiling Report"
 
@@ -522,7 +525,7 @@ class TestSQLTapMiddleware(TestSQLTap):
         super(TestSQLTapMiddleware, self).setUp()
         from werkzeug.testapp import test_app
         self.app = sqltap.wsgi.SQLTapMiddleware(app=test_app)
-        self.client = Client(self.app, BaseResponse)
+        self.client = Client(self.app, Response)
 
     def test_can_construct_wsgi_wrapper(self):
         """
