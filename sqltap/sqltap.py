@@ -1,23 +1,23 @@
 from __future__ import division
 
+import collections
 import datetime
+import os
+import sys
 import time
 import traceback
-import collections
-import sys
-import os
+
 try:
     import queue
 except ImportError:
     import Queue as queue
 
 import mako.exceptions
-import mako.template
 import mako.lookup
+import mako.template
 import sqlalchemy.engine
 import sqlalchemy.event
 import sqlparse
-
 
 REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
@@ -561,8 +561,8 @@ def _hotfix_dispatch_remove():
     if sqlalchemy.__version__ >= "0.9.4":
         return
 
-    from sqlalchemy.event.attr import _DispatchDescriptor
     from sqlalchemy.event import registry
+    from sqlalchemy.event.attr import _DispatchDescriptor
 
     def remove(self, event_key):
         target = event_key.dispatch_target
@@ -575,5 +575,6 @@ def _hotfix_dispatch_remove():
         registry._removed_from_collection(event_key, self)
 
     _DispatchDescriptor.remove = remove
+
 
 _hotfix_dispatch_remove()
