@@ -28,21 +28,16 @@ setup(
     packages=["sqltap"],
     package_data={"sqltap": ["templates/*.mako"]},
     install_requires=[
-        "SQLAlchemy >= 0.9",
+        "SQLAlchemy >= 1.4",
         "Mako >= 0.4.1",
         "Werkzeug >= 0.9.6",
         "sqlparse >= 0.1.15"
     ],
-    tests_require=[
-        "nose"
-    ],
-    test_suite='nose.collector',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Topic :: Database'
     ]
