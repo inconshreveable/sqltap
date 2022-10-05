@@ -1,0 +1,48 @@
+version: 2.1
+jobs:
+    tox_block:
+        parameters:
+            python_version:
+                type: string
+            tox_env:
+                type: string
+        docker:
+            - image: "python:<< parameters.python_version >>"
+        steps:
+            - checkout
+
+            - run:
+                name: install tox and upgrade pip
+                command: pip install --progress-bar off -U pip tox
+
+            - run:
+                name: version checks
+                command: |
+                    python --version
+                    pip --version
+                    virtualenv --version
+                    tox --version
+
+            - run:
+                name: run tox
+                command: "tox -e << parameters.tox_env >>"
+
+            - store_test_results:
+                path: .circleci/test-reports/
+workflows:
+    version: 2
+    build:
+        jobs:
+            - tox_block:
+                python_version: "3.9"
+                tox_env: py39,flake8
+            - tox_block:
+                python_version: "3.8"
+                tox_env: py38
+            - tox_block:
+                python_version: "3.7"
+                tox_env: py37
+            - tox_block:
+                python_version: "3.6"
+                tox_env: py36,py36-lowest
+

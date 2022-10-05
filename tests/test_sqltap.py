@@ -1,23 +1,25 @@
 # -*- encoding: utf8 -*-
 from __future__ import print_function
 
+import collections
 import os
 import tempfile
-import collections
 import uuid
+import warnings
 
-from sqlalchemy import *  # noqa
-from sqlalchemy.orm import *  # noqa
-from sqlalchemy.ext.declarative import declarative_base
+import nose.tools
 import sqlalchemy.event
 import sqlparse
-import nose.tools
+from sqlalchemy import Column, Integer, String, Unicode, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import Client
-from werkzeug.wrappers import BaseResponse
+from werkzeug.wrappers import Response
 
 import sqltap
 import sqltap.wsgi
 
+warnings.simplefilter(os.environ.get('WARNING_ACTION', 'error'))
 
 REPORT_TITLE = "SQLTap Profiling Report"
 
@@ -150,8 +152,6 @@ class TestSQLTap(object):
             raise ValueError("Second start should have asserted")
         except AssertionError:
             pass
-        except:
-            assert False, "Got some non-assertion exception"
         profiler.stop()
 
     def test_stop(self):
@@ -525,7 +525,7 @@ class TestSQLTapMiddleware(TestSQLTap):
         super(TestSQLTapMiddleware, self).setUp()
         from werkzeug.testapp import test_app
         self.app = sqltap.wsgi.SQLTapMiddleware(app=test_app)
-        self.client = Client(self.app, BaseResponse)
+        self.client = Client(self.app, Response)
 
     def test_can_construct_wsgi_wrapper(self):
         """
