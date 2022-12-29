@@ -33,6 +33,22 @@ def format_sql(sql):
         return sql
 
 
+try:
+    from gevent import util as gevent_util
+except ImportError:
+    gevent_util = None
+
+# based on gevent.util.print_run_info()
+def greenlet_extended_stack():
+    forest = gevent_util.GreenletTree.forest()
+    current_trees = [tree for tree in forest if tree.is_current_tree]
+    assert len(current_trees) == 1
+    current_tree = current_trees[0]
+    gr_frame = current_tree.greenlet.gr_frame
+    greenlet_stack = traceback.extract_stack(gr_frame)
+    return greenlet_stack
+
+
 class QueryStats(object):
     """ Statistics about a query
 
@@ -188,6 +204,10 @@ class ProfilingSession(object):
         params_dict = self._extract_parameters_from_results(results)
 
         stack = traceback.extract_stack()[:-1]
+        if gevent_util is not None:
+            greenlet_stack = greenlet_extended_stack()
+            stack = greenlet_stack + stack
+
         qstats = QueryStats(text, stack, start_time, end_time,
                             context, params_dict, results)
 
