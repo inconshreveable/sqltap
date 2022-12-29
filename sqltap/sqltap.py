@@ -322,7 +322,10 @@ class QueryGroup(object):
         self.max = max(self.max, q.duration)
         self.min = min(self.min, q.duration)
         self.sum += q.duration
-        self.rowcounts += q.rowcount
+        if q.rowcount != -1:
+            self.rowcounts += q.rowcount
+        else:
+            self.rowcounts = -1
         self.mean = self.sum / len(self.queries)
 
         self.add_params(q)
