@@ -18,6 +18,7 @@ import mako.template
 import sqlalchemy.engine
 import sqlalchemy.event
 import sqlparse
+from gevent import util as gevent_util
 
 REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
@@ -32,11 +33,6 @@ def format_sql(sql):
     except Exception:
         return sql
 
-
-try:
-    from gevent import util as gevent_util
-except ImportError:
-    gevent_util = None
 
 # based on gevent.util.print_run_info()
 def greenlet_extended_stack():
@@ -204,9 +200,9 @@ class ProfilingSession(object):
         params_dict = self._extract_parameters_from_results(results)
 
         stack = traceback.extract_stack()[:-1]
-        if gevent_util is not None:
-            greenlet_stack = greenlet_extended_stack()
-            stack = greenlet_stack + stack
+        # update stack from gevent
+        greenlet_stack = greenlet_extended_stack()
+        stack = greenlet_stack + stack
 
         qstats = QueryStats(text, stack, start_time, end_time,
                             context, params_dict, results)
