@@ -31,7 +31,8 @@ setup(
         "SQLAlchemy >= 1.4",
         "Mako >= 0.4.1",
         "Werkzeug >= 0.9.6",
-        "sqlparse >= 0.1.15"
+        "sqlparse >= 0.1.15",
+        "gevent >= 22.10.2"
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
