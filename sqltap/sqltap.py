@@ -18,7 +18,9 @@ import mako.template
 import sqlalchemy.engine
 import sqlalchemy.event
 import sqlparse
-from gevent import util as gevent_util
+
+from greenlet import getcurrent
+from gevent.util import GreenletTree
 
 REPORT_HTML = "html"
 REPORT_WSGI = "wsgi"
@@ -36,11 +38,8 @@ def format_sql(sql):
 
 # based on gevent.util.print_run_info()
 def greenlet_extended_stack():
-    forest = gevent_util.GreenletTree.forest()
-    current_trees = [tree for tree in forest if tree.is_current_tree]
-    assert len(current_trees) == 1
-    current_tree = current_trees[0]
-    gr_frame = current_tree.greenlet.gr_frame
+    main_greenlet = GreenletTree._root_greenlet(getcurrent())
+    gr_frame = main_greenlet.gr_frame
     greenlet_stack = traceback.extract_stack(gr_frame)
     return greenlet_stack
 
